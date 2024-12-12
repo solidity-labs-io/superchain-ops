@@ -5,15 +5,11 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {Test} from "forge-std/Test.sol";
 import {IAddressRegistry} from "src/fps/IAddressRegistry.sol";
 
-/// @title Network Address Manager
+/// @title Mainnet Address Manager
 /// @notice This contract provides a single source of truth for storing and retrieving addresses across multiple networks.
 /// @dev Handles addresses for contracts and externally owned accounts (EOAs) while ensuring correctness and uniqueness.
 contract AddressRegistry is IAddressRegistry, Test {
     using EnumerableSet for EnumerableSet.UintSet;
-
-    /// chainlist .toml -> create this file for each task
-    /// superchainRegistry
-    ///   superchain/configs/ mainnnet/<network_name>.toml
 
     /// @dev Structure for reading address details from JSON files.
     struct InputAddress {
@@ -75,7 +71,7 @@ contract AddressRegistry is IAddressRegistry, Test {
             );
 
             // Validate if the address is correctly marked as a contract or EOA
-            _typeCheckAddress(contractAddress, chainId, isContract);
+            _typeCheckAddress(contractAddress, isContract);
 
             registry[identifier][chainId] = RegistryEntry(contractAddress, isContract);
             vm.label(contractAddress, identifier); // Add label for debugging purposes
@@ -109,8 +105,8 @@ contract AddressRegistry is IAddressRegistry, Test {
     /// @notice Retrieves an address by its identifier for the current chain.
     /// @param identifier Unique name for the address.
     /// @return The associated address.
-    function getAddress(string memory identifier) public view returns (address) {
-        _checkChainSupported(block.chainid);
+    function getAddress(string memory identifier, uint256 l2ChainId) public view returns (address) {
+        _checkL2Supported(block.chainid);
 
         // Fetch the stored registry entry
         RegistryEntry memory entry = registry[identifier][block.chainid];
@@ -118,18 +114,15 @@ contract AddressRegistry is IAddressRegistry, Test {
 
         require(resolvedAddress != address(0), "Address not found");
 
-        // Perform type checks only for the current chain
-        _typeCheckAddress(resolvedAddress, block.chainid, entry.isContract);
-
         return resolvedAddress;
     }
 
     /// @notice Checks if an address by its identifier is a contract on the current chain.
     /// @param identifier Unique name for the address.
     /// @return True if the address is a contract, false otherwise.
-    function isAddressContract(string memory identifier) public view returns (bool) {
-        _checkAddressRegistered(identifier, block.chainid);
-        _checkChainSupported(block.chainid);
+    function isAddressContract(string memory identifier, uint256 l2ChainId) public view returns (bool) {
+        _checkAddressRegistered(identifier, l2ChainId);
+        _checkL2Supported(l2ChainId);
 
         return registry[identifier][block.chainid].isContract;
     }
@@ -137,8 +130,8 @@ contract AddressRegistry is IAddressRegistry, Test {
     /// @notice Checks if an address by its identifier exists on the current chain.
     /// @param identifier Unique name for the address.
     /// @return True if the address exists, false otherwise.
-    function isAddressRegistered(string memory identifier) public view returns (bool) {
-        _checkChainSupported(block.chainid);
+    function isAddressRegistered(string memory identifier, uint256 l2ChainId) public view returns (bool) {
+        _checkL2Supported(l2ChainId);
 
         return registry[identifier][block.chainid].addr != address(0);
     }
@@ -159,15 +152,11 @@ contract AddressRegistry is IAddressRegistry, Test {
 
     /// @notice Validates the type of an address (contract or externally owned account) for the current chain.
     /// @dev Ensures the address either contains or does not contain bytecode based on the `isContract` flag.
-    ///      This validation is only performed when the `chainId` matches the current chain's ID.
     ///      Reverts with an error if the address does not meet the expected type.
     /// Only allows for type checking on the current chain. Otherwise reverts. This prevents fork management errors.
     /// @param addr The address to validate.
-    /// @param chainId The blockchain network id.
     /// @param isContract True if the address is expected to be a contract, false if it is expected to be an externally owned account (EOA).
-    function _typeCheckAddress(address addr, uint256 chainId, bool isContract) private view {
-        require(chainId == block.chainid, "Type check only supported for the current chain");
-
+    function _typeCheckAddress(address addr, bool isContract) private view {
         if (isContract) {
             require(addr.code.length > 0, "Address must contain code");
         } else {
@@ -178,9 +167,17 @@ contract AddressRegistry is IAddressRegistry, Test {
     /// @notice Checks whether the specified chain ID is supported by the contract.
     /// @dev Reverts if the given `chainId` is not found in the `supportedChainIds` set.
     /// @param chainId The identifier of the chain to check for support.
-    function _checkChainSupported(uint256 chainId) private view {
+    function _checkL2Supported(uint256 chainId) private view {
+        bool isSupported = false;
+        for (uint256 i = 0; i < superchains.length; i++) {
+            if (superchains[i].chainId == chainId) {
+                isSupported = true;
+                break;
+            }
+        }
+
         require(
-            supportedChainIds == chainId, string(abi.encodePacked("Chain ID ", vm.toString(chainId), " not supported"))
+            isSupported, string(abi.encodePacked("L2 Chain ID ", vm.toString(chainId), " not supported"))
         );
     }
 }

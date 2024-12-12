@@ -1,0 +1,23 @@
+name: Ethereum Mainnet Tests
+
+on: [pull_request]
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  op-mainnet-tests:
+    name: Oracle Integration Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Setup Environment
+        uses: ./.github/actions
+
+      - name: Run Integration Test
+        run: forge test -vvv

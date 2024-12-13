@@ -1,8 +1,12 @@
 pragma solidity 0.8.15;
 
+import {console} from "forge-std/console.sol";
+
 import {Proposal} from "./Proposal.sol";
 import {MULTICALL_BYTECODE, SAFE_BYTECODE} from "src/fps/utils/Constants.sol";
 import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
+import {IGnosisSafe, Enum} from "./IGnosisSafe.sol";
+import {MULTICALL3_ADDRESS} from "src/fps/utils/Constants.sol";
 
 abstract contract MultisigProposal is Proposal {
     bytes32 public constant MULTISIG_BYTECODE_HASH =
@@ -32,7 +36,27 @@ abstract contract MultisigProposal is Proposal {
         data = abi.encodeWithSignature("aggregate3Value((address,bool,uint256,bytes)[])", calls);
     }
 
-    function _simulateActions(address multisig) internal {
+    function getDataToSign() public view returns (bytes memory data) {
+        data = IGnosisSafe(caller).encodeTransactionData({
+            to: MULTICALL3_ADDRESS,
+            value: 0,
+            data: getCalldata(),
+            operation: Enum.Operation.DelegateCall,
+            safeTxGas: 0,
+            baseGas: 0,
+            gasPrice: 0,
+            gasToken: address(0),
+            refundReceiver: address(0),
+            _nonce: IGnosisSafe(caller).nonce()
+        });
+    }
+
+    function getHashToApprove() public view returns (bytes32 hash) {
+        hash = keccak256(getDataToSign());
+    }
+
+    function simulate() public override {
+        address multisig = caller;
         vm.startPrank(multisig);
 
         /// this is a hack because multisig execTransaction requires owners signatures
@@ -41,9 +65,7 @@ abstract contract MultisigProposal is Proposal {
 
         bytes memory data = getCalldata();
 
-        (bool success, ) = multisig.call{value: 0}(
-            data
-        );
+        (bool success,) = multisig.call{value: 0}(data);
 
         require(success, "MultisigProposal: simulateActions failed");
 
@@ -51,5 +73,15 @@ abstract contract MultisigProposal is Proposal {
         vm.etch(multisig, SAFE_BYTECODE);
 
         vm.stopPrank();
+    }
+
+    function print() public override {
+        super.print();
+
+        console.log("\n\n------------------ Data to Sign ------------------");
+        console.logBytes(getDataToSign());
+
+        console.log("\n\n------------------ Hash to Approve ------------------");
+        console.logBytes32(getHashToApprove());
     }
 }

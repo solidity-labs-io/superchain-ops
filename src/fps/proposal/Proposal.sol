@@ -226,8 +226,8 @@ abstract contract Proposal is Test, Script, IProposal {
             /// only care about calls from the original caller,
             /// static calls are ignored,
             /// calls to and from Addresses and the vm contract are ignored
+            /// ignore calls to vm in the build function
             if (
-                /// ignore calls to vm in the build function
                 accountAccesses[i].account != address(addresses) && accountAccesses[i].account != address(vm)
                     && accountAccesses[i].accessor != address(addresses)
                     && accountAccesses[i].kind == VmSafe.AccountAccessKind.Call && accountAccesses[i].accessor == caller

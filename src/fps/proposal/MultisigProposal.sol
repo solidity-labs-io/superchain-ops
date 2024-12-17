@@ -41,9 +41,7 @@ abstract contract MultisigProposal is Proposal {
 
         bytes memory data = getCalldata();
 
-        (bool success, ) = multisig.call{value: 0}(
-            data
-        );
+        (bool success,) = multisig.call{value: 0}(data);
 
         require(success, "MultisigProposal: simulateActions failed");
 

@@ -8,20 +8,24 @@ interface SystemConfig {
     function setGasLimit(uint64) external;
 }
 
+/// TODO:
+///  - MultisigProposal update:
+///      - default validate function where we check that only the allowed storage accesses are modified
+///      - default function to check in the validate function that no safe configs are changed
 contract Task00 is MultisigProposal("src/fps/example/task-00/chainlistExample.toml") {
     constructor() {
         addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/chainlistExample.toml");
     }
 
-    function name() public view override returns (string memory) {
+    function name() public pure override returns (string memory) {
         return "Task 00";
     }
 
-    function description() public view override returns (string memory) {
+    function description() public pure override returns (string memory) {
         return "Task 00 - Set gas limit to 100,000";
     }
 
-    function getAllowedStorageAccess() public view override returns (AllowedStorageAccesses[] memory) {
+    function getAllowedStorageAccess() public pure override returns (AllowedStorageAccesses[] memory) {
         AllowedStorageAccesses[] memory storageAccess = new AllowedStorageAccesses[](1);
 
         storageAccess[0].contractAddressIdentifier = "SystemConfig";

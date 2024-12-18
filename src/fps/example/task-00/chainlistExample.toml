@@ -3,5 +3,5 @@
   chain_id = 10
 
 [[chains]]
-  name = "Zora"
-  chain_id = 7777777
+  name = "Base"
+  chain_id = 8453

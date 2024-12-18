@@ -8,11 +8,7 @@ interface SystemConfig {
     function setGasLimit(uint64) external;
 }
 
-/// TODO:
-///  - MultisigProposal update:
-///      - default validate function where we check that only the allowed storage accesses are modified
-///      - default function to check in the validate function that no safe configs are changed
-contract Task00 is MultisigProposal("src/fps/example/task-00/chainlistExample.toml") {
+contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
     constructor() {
         addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/chainlistExample.toml");
     }
@@ -26,19 +22,23 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/chainlistExample.to
     }
 
     function getAllowedStorageAccess() public pure override returns (AllowedStorageAccesses[] memory) {
-        AllowedStorageAccesses[] memory storageAccess = new AllowedStorageAccesses[](1);
+        AllowedStorageAccesses[] memory storageAccess = new AllowedStorageAccesses[](2);
 
-        storageAccess[0].contractAddressIdentifier = "SystemConfig";
+        storageAccess[0].contractAddressIdentifier = "SystemConfigProxy";
         storageAccess[0].l2ChainId = BASE_CHAIN_ID;
+
+        storageAccess[1].contractAddressIdentifier = "SystemConfigProxy";
+        storageAccess[1].l2ChainId = OP_CHAIN_ID;
 
         return storageAccess;
     }
 
-    function build() public override {
+    function build() public override buildModifier {
         /// view only, filtered out by Proposal.sol
-        SystemConfig config = SystemConfig(addresses.getAddress("SystemConfig", BASE_CHAIN_ID));
-
+        SystemConfig configBase = SystemConfig(addresses.getAddress("SystemConfig", BASE_CHAIN_ID));
+        SystemConfig configOp = SystemConfig(addresses.getAddress("SystemConfig", OP_CHAIN_ID));
         /// mutative call, recorded by Proposal.sol for generating multisig calldata
-        config.setGasLimit(100_000);
+        configBase.setGasLimit(100_000);
+        configOp.setGasLimit(100_000);
     }
 }

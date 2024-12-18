@@ -1,5 +1,3 @@
 [taskConfig]
-ownerChange = false # changed owner of the safe
-safeConfigChange = false # changed configuration of the safe with module, guard, threshold, etc.
 safeNonce = 10 # nonce to execute this transaction
-safeAddressString = "SECURITY_COUNCIL_SAFE" # address of the safe in AddressRegistry
+safeAddressString = "SystemConfigOwner" # address of the safe in AddressRegistry

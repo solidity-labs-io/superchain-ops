@@ -14,10 +14,6 @@ abstract contract MultisigProposal is Proposal {
 
     uint256 public nonce;
 
-    bool public safeOwnerChange;
-
-    bool public safeConfigChange;
-
     struct Call3Value {
         address target;
         bool allowFailure;
@@ -26,9 +22,7 @@ abstract contract MultisigProposal is Proposal {
     }
 
     struct TaskConfig {
-        bool ownerChange;
         string safeAddressString;
-        bool safeConfigChange;
         uint64 safeNonce;
     }
 
@@ -39,11 +33,15 @@ abstract contract MultisigProposal is Proposal {
         /// whether or not to set the safe nonce manually
         nonce = config.safeNonce;
 
-        /// if safe owner changes, allow owner changes
-        safeOwnerChange = config.ownerChange;
+        /// get superchains
+        Addresses.Superchain[] memory superchains = addresses.superchains();
+        require(superchains.length > 0, "MultisigProposal: no superchains found");
 
-        /// if safe config changes, allow module, threshold and other settings changes
-        safeConfigChange = config.safeConfigChange;
+        /// check that the safe address is the same for all superchains and set caller
+        caller = addresses.getAddress(config.safeAddressString, superchain[0].chainId);
+        for (uint256 i = 1; i < superchain.length; i++) {
+            require(caller == addresses.getAddress(config.safeAddressString, superchain[i].chainId), "MultisigProposal: safe address mismatch");
+        }
     }
 
     /// @notice return calldata, log if debug is set to true
@@ -74,7 +72,7 @@ abstract contract MultisigProposal is Proposal {
             gasPrice: 0,
             gasToken: address(0),
             refundReceiver: address(0),
-            _nonce: IGnosisSafe(caller).nonce()
+            _nonce: nonce
         });
     }
 
@@ -110,5 +108,22 @@ abstract contract MultisigProposal is Proposal {
 
         console.log("\n\n------------------ Hash to Approve ------------------");
         console.logBytes32(getHashToApprove());
+    }
+
+    function validate() public override {
+        AllowedStorageAccesses[] memory allowedStorageAccesses = getAllowedStorageAccess();
+
+        for (uint256 i; i < _proposalStateChangeAddresses.length; i++) {
+            address addr = _proposalStateChangeAddresses[i];
+            bool isAllowed;
+            for (uint256 j; j < allowedStorageAccesses.length; j++) {
+                if (addresses.getAddress(allowedStorageAccesses[j].contractAddressIdentifier, allowedStorageAccesses[j].l2ChainId) == addr) {
+                    isAllowed = true;
+                    break;
+                }
+            }
+            require(isAllowed, "MultisigProposal: address not in allowed storage accesses");
+        }
+
     }
 }

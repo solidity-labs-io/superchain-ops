@@ -35,10 +35,14 @@ abstract contract Proposal is Test, Script, IProposal {
     mapping(address => StateInfo[]) private _stateInfos;
 
     /// @notice addresses involved in state changes or token transfers
-    address[] private _proposalAffectedAddresses;
+    address[] private _proposalTransferFromAddresses;
 
     /// @notice map if an address is affected in proposal execution
-    mapping(address => bool) private _isProposalAffectedAddress;
+    mapping(address => bool) private _isProposalTransferFromAddress;
+
+    address[] internal _proposalStateChangeAddresses;
+
+    mapping(address => bool) internal _isProposalStateChangeAddress;
 
     /// @notice starting snapshot of the contract state before the calls are made
     uint256 private _startSnapshot;
@@ -67,14 +71,15 @@ abstract contract Proposal is Test, Script, IProposal {
     /// @notice primary fork id
     uint256 public primaryForkId;
 
+    /// @notice The address of the caller for the proposal
+    /// is set in the multisig proposal constructor
     address public caller;
 
     /// @notice buildModifier to be used by the build function to populate the
     /// actions array
     /// @param toPrank the address that will be used as the caller for the
     /// actions, e.g. multisig address, timelock address, etc.
-    modifier buildModifier(address toPrank) {
-        caller = toPrank;
+    modifier buildModifier() {
         _startBuild();
         _;
         _endBuild();
@@ -190,9 +195,9 @@ abstract contract Proposal is Test, Script, IProposal {
             console.log("\n");
         }
 
-        console.log("\n----------------- Proposal Changes -------------------");
-        for (uint256 i; i < _proposalAffectedAddresses.length; i++) {
-            address account = _proposalAffectedAddresses[i];
+        console.log("\n----------------- Proposal Transfers -------------------");
+        for (uint256 i; i < _proposalTransferFromAddresses.length; i++) {
+            address account = _proposalTransferFromAddresses[i];
 
             console.log("\n\n", string(abi.encodePacked(_getAddressLabel(account), ":")));
 
@@ -225,11 +230,15 @@ abstract contract Proposal is Test, Script, IProposal {
                     );
                 }
             }
+        }
 
-            // print state changes
+        console.log("\n----------------- Proposal State Changes -------------------");
+        // print state changes
+        for (uint256 k; k < _proposalStateChangeAddresses.length; k++) {
+            address account = _proposalStateChangeAddresses[k];
             StateInfo[] memory stateChanges = _stateInfos[account];
             if (stateChanges.length > 0) {
-                console.log("\n State Changes:");
+                console.log("\n State Changes for account:", _getAddressLabel(account));
             }
             for (uint256 j; j < stateChanges.length; j++) {
                 console.log("Slot:", vm.toString(stateChanges[j].slot));
@@ -359,10 +368,10 @@ abstract contract Proposal is Test, Script, IProposal {
         address account = accountAccess.account;
         // get eth transfers
         if (accountAccess.value != 0) {
-            // add address to proposal affected addresses array only if not already added
-            if (!_isProposalAffectedAddress[accountAccess.accessor]) {
-                _isProposalAffectedAddress[accountAccess.accessor] = true;
-                _proposalAffectedAddresses.push(accountAccess.accessor);
+            // add address to proposal transfer from addresses array only if not already added
+            if (!_isProposalTransferFromAddress[accountAccess.accessor]) {
+                _isProposalTransferFromAddress[accountAccess.accessor] = true;
+                _proposalTransferFromAddresses.push(accountAccess.accessor);
             }
             _proposalTransfers[accountAccess.accessor].push(
                 TransferInfo({to: account, value: accountAccess.value, tokenAddress: address(0)})
@@ -401,10 +410,10 @@ abstract contract Proposal is Test, Script, IProposal {
             return;
         }
 
-        // add address to proposal affected addresses array only if not already added
-        if (!_isProposalAffectedAddress[from]) {
-            _isProposalAffectedAddress[from] = true;
-            _proposalAffectedAddresses.push(from);
+        // add address to proposal transfer from addresses array only if not already added
+        if (!_isProposalTransferFromAddress[from]) {
+            _isProposalTransferFromAddress[from] = true;
+            _proposalTransferFromAddresses.push(from);
         }
 
         _proposalTransfers[from].push(TransferInfo({to: to, value: value, tokenAddress: accountAccess.account}));
@@ -426,10 +435,10 @@ abstract contract Proposal is Test, Script, IProposal {
                 );
             }
 
-            // add address to proposal affected addresses array only if not already added
-            if (!_isProposalAffectedAddress[account] && _stateInfos[account].length != 0) {
-                _isProposalAffectedAddress[account] = true;
-                _proposalAffectedAddresses.push(account);
+            // add address to proposal state change addresses array only if not already added
+            if (!_isProposalStateChangeAddress[account] && _stateInfos[account].length != 0) {
+                _isProposalStateChangeAddress[account] = true;
+                _proposalStateChangeAddresses.push(account);
             }
         }
     }

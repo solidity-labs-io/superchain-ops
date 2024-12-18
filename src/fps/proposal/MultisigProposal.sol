@@ -12,11 +12,38 @@ abstract contract MultisigProposal is Proposal {
     bytes32 public constant MULTISIG_BYTECODE_HASH =
         bytes32(0xb89c1b3bdf2cf8827818646bce9a8f6e372885f8c55e5c07acbd307cb133b000);
 
+    uint256 public nonce;
+
+    bool public safeOwnerChange;
+
+    bool public safeConfigChange;
+
     struct Call3Value {
         address target;
         bool allowFailure;
         uint256 value;
         bytes callData;
+    }
+
+    struct TaskConfig {
+        bool ownerChange;
+        string safeAddressString;
+        bool safeConfigChange;
+        uint64 safeNonce;
+    }
+
+    constructor(string memory path) {
+        bytes memory fileContents = bytes(vm.readFile(path));
+        TaskConfig memory config = abi.decode(fileContents, (TaskConfig));
+
+        /// whether or not to set the safe nonce manually
+        nonce = config.safeNonce;
+
+        /// if safe owner changes, allow owner changes
+        safeOwnerChange = config.ownerChange;
+
+        /// if safe config changes, allow module, threshold and other settings changes
+        safeConfigChange = config.safeConfigChange;
     }
 
     /// @notice return calldata, log if debug is set to true

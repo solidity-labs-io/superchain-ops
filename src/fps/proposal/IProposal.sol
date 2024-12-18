@@ -22,8 +22,13 @@ interface IProposal {
         external
         returns (address[] memory targets, uint256[] memory values, bytes[] memory arguments);
 
-    /// @notice return contracts whose storage is modified by the proposal
-    function getAllowedStorageAccess() external view returns (address[] memory);
+    struct AllowedStorageAccesses {
+        string contractAddressIdentifier;
+        uint256 l2ChainId;
+    }
+
+    /// @notice return contract identifiers whose storage is modified by the proposal
+    function getAllowedStorageAccess() external view returns (AllowedStorageAccesses[] memory);
 
     /// @notice return proposal calldata
     function getCalldata() external returns (bytes memory data);

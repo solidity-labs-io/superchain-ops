@@ -34,14 +34,14 @@ abstract contract MultisigProposal is Proposal {
         nonce = config.safeNonce;
 
         /// get superchains
-        Addresses.Superchain[] memory superchains = addresses.superchains();
+        Addresses.Superchain[] memory superchains = addresses.getSuperchains();
         require(superchains.length > 0, "MultisigProposal: no superchains found");
 
         /// check that the safe address is the same for all superchains and set caller
-        caller = addresses.getAddress(config.safeAddressString, superchain[0].chainId);
-        for (uint256 i = 1; i < superchain.length; i++) {
+        caller = addresses.getAddress(config.safeAddressString, superchains[0].chainId);
+        for (uint256 i = 1; i < superchains.length; i++) {
             require(
-                caller == addresses.getAddress(config.safeAddressString, superchain[i].chainId),
+                caller == addresses.getAddress(config.safeAddressString, superchains[i].chainId),
                 "MultisigProposal: safe address mismatch"
             );
         }

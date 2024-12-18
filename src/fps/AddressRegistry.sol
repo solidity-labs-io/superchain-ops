@@ -161,6 +161,12 @@ contract AddressRegistry is IAddressRegistry, Test {
         );
     }
 
+    /// @notice Returns the list of supported superchains
+    /// @return An array of Superchain structs representing the supported superchains
+    function getSuperchains() public view returns (Superchain[] memory) {
+        return superchains;
+    }
+
     /// @notice Verifies that the given L2 chain ID is supported
     /// @param l2ChainId The chain ID of the L2 network to verify
     function _l2ChainIdSupported(uint256 l2ChainId) private view {

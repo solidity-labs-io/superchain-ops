@@ -77,8 +77,6 @@ abstract contract Proposal is Test, Script, IProposal {
 
     /// @notice buildModifier to be used by the build function to populate the
     /// actions array
-    /// @param toPrank the address that will be used as the caller for the
-    /// actions, e.g. multisig address, timelock address, etc.
     modifier buildModifier() {
         _startBuild();
         _;
@@ -116,6 +114,9 @@ abstract contract Proposal is Test, Script, IProposal {
 
     /// @notice return proposal calldata.
     function getCalldata() public virtual returns (bytes memory data);
+
+    /// @notice return contract identifiers whose storage is modified by the proposal
+    function getAllowedStorageAccess() public view virtual returns (AllowedStorageAccesses[] memory);
 
     /// @notice get proposal actions
     function getProposalActions()

@@ -79,10 +79,6 @@ abstract contract Proposal is Test, Script, IProposal {
     /// @notice return proposal calldata.
     function getCalldata() public virtual returns (bytes memory data);
 
-    /// @notice check if there are any on-chain proposal that matches the
-    /// proposal calldata
-    function checkOnChainCalldata() public view virtual returns (bool matches);
-
     /// @notice get proposal actions
     function getProposalActions()
         public

@@ -1,0 +1,5 @@
+[taskConfig]
+ownerChange = false
+safeConfigChange = false
+safeNonce = 10
+safeAddressString = "SECURITY_COUNCIL_SAFE"

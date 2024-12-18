@@ -8,7 +8,6 @@ interface SystemConfig {
     function setGasLimit(uint64) external;
 }
 
-
 contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
     constructor() {
         addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/chainlistExample.toml");
@@ -34,7 +33,7 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
         return storageAccess;
     }
 
-    function build() public override buildModifier() {
+    function build() public override buildModifier {
         /// view only, filtered out by Proposal.sol
         SystemConfig configBase = SystemConfig(addresses.getAddress("SystemConfig", BASE_CHAIN_ID));
         SystemConfig configOp = SystemConfig(addresses.getAddress("SystemConfig", OP_CHAIN_ID));

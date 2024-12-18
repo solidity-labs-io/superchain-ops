@@ -40,7 +40,10 @@ abstract contract MultisigProposal is Proposal {
         /// check that the safe address is the same for all superchains and set caller
         caller = addresses.getAddress(config.safeAddressString, superchain[0].chainId);
         for (uint256 i = 1; i < superchain.length; i++) {
-            require(caller == addresses.getAddress(config.safeAddressString, superchain[i].chainId), "MultisigProposal: safe address mismatch");
+            require(
+                caller == addresses.getAddress(config.safeAddressString, superchain[i].chainId),
+                "MultisigProposal: safe address mismatch"
+            );
         }
     }
 
@@ -117,13 +120,16 @@ abstract contract MultisigProposal is Proposal {
             address addr = _proposalStateChangeAddresses[i];
             bool isAllowed;
             for (uint256 j; j < allowedStorageAccesses.length; j++) {
-                if (addresses.getAddress(allowedStorageAccesses[j].contractAddressIdentifier, allowedStorageAccesses[j].l2ChainId) == addr) {
+                if (
+                    addresses.getAddress(
+                        allowedStorageAccesses[j].contractAddressIdentifier, allowedStorageAccesses[j].l2ChainId
+                    ) == addr
+                ) {
                     isAllowed = true;
                     break;
                 }
             }
             require(isAllowed, "MultisigProposal: address not in allowed storage accesses");
         }
-
     }
 }

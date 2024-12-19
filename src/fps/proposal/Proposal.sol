@@ -6,6 +6,7 @@ import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
 import {IProposal} from "src/fps/proposal/IProposal.sol";
+import {MULTICALL3_ADDRESS} from "src/fps/utils/Constants.sol";
 import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
 
 abstract contract Proposal is Test, Script, IProposal {
@@ -42,6 +43,10 @@ abstract contract Proposal is Test, Script, IProposal {
 
     address[] internal _proposalStateChangeAddresses;
 
+    /// @notice stores the gnosis safe accesses for the proposal
+    VmSafe.StorageAccess[] internal _accountAccesses;
+
+    /// @notice stores the addresses touched by the proposal state changes
     mapping(address => bool) internal _isProposalStateChangeAddress;
 
     /// @notice starting snapshot of the contract state before the calls are made
@@ -272,7 +277,9 @@ abstract contract Proposal is Test, Script, IProposal {
     }
 
     /// @notice validate actions
-    function _validateActions() internal virtual {}
+    function _validateActions() internal virtual {
+        /// TODO implement checks for order of calls to validate different templatized operations
+    }
 
     /// @notice print proposal calldata
     function _printProposalCalldata() internal virtual {
@@ -314,11 +321,26 @@ abstract contract Proposal is Test, Script, IProposal {
         _processStateDiffChanges(accountAccesses);
 
         for (uint256 i = 0; i < accountAccesses.length; i++) {
+            /// store all gnosis safe storage accesses that are writes
+            for (uint256 j = 0; j < accountAccesses[i].storageAccesses.length; j++) {
+                if (accountAccesses[i].account == caller && accountAccesses[i].storageAccesses[j].isWrite) {
+                    _accountAccesses.push(accountAccesses[i].storageAccesses[j]);
+                }
+            }
+
+            if (accountAccesses[i].kind == VmSafe.AccountAccessKind.DelegateCall) {
+                require(
+                    accountAccesses[i].account == MULTICALL3_ADDRESS,
+                    string.concat("Unauthorized DelegateCall to address", vm.toString(accountAccesses[i].account))
+                );
+            }
+
             /// only care about calls from the original caller,
             /// static calls are ignored,
             /// calls to and from Addresses and the vm contract are ignored
             /// ignore calls to vm in the build function
             if (
+                /// TODO should we remove this condition? it may filter out calls that we need
                 accountAccesses[i].account != address(addresses) && accountAccesses[i].account != address(vm)
                     && accountAccesses[i].accessor != address(addresses)
                     && accountAccesses[i].kind == VmSafe.AccountAccessKind.Call && accountAccesses[i].accessor == caller

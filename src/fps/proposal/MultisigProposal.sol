@@ -3,16 +3,50 @@ pragma solidity 0.8.15;
 import {console} from "forge-std/console.sol";
 
 import {Proposal} from "./Proposal.sol";
-import {MULTICALL_BYTECODE, SAFE_BYTECODE} from "src/fps/utils/Constants.sol";
-import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
 import {IGnosisSafe, Enum} from "./IGnosisSafe.sol";
 import {MULTICALL3_ADDRESS} from "src/fps/utils/Constants.sol";
+import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
+import {MULTICALL_BYTECODE, SAFE_BYTECODE} from "src/fps/utils/Constants.sol";
 
 abstract contract MultisigProposal is Proposal {
     bytes32 public constant MULTISIG_BYTECODE_HASH =
         bytes32(0xb89c1b3bdf2cf8827818646bce9a8f6e372885f8c55e5c07acbd307cb133b000);
 
+    /// @notice offset for the nonce variable in Gnosis Safe
+    bytes32 public constant NONCE_OFFSET = 0x0000000000000000000000000000000000000000000000000000000000000005;
+
+    /// @notice the amount of modules to fetch from the Gnosis Safe
+    uint256 public constant MODULES_FETCH_AMOUNT = 1_000;
+
+    /// @notice nonce used for generating the safe transaction
+    /// will be set to the value specified in the config file
     uint256 public nonce;
+
+    /// @notice owners the safe started with
+    address[] public startingOwners;
+
+    /// @notice starting safe threshold
+    uint256 public startingThreshold;
+
+    /// @notice starting modules
+    address[] public startingModules;
+
+    /// @notice starting fallback handler
+    address public startingFallbackHandler;
+
+    /// @notice starting logic contract
+    address public startingLogicContract;
+
+    /// @notice whether or not storage besides owners and nonce is allowed to
+    /// be modified with this proposal
+    bool public safeConfigChangeAllowed;
+
+    /// @notice array of L2 ChainIds this proposal will interface with
+    /// TODO populate this in constructor, reading in toml config file
+    uint256[] public l2ChainIds;
+
+    /// @notice configured chain id
+    uint256 public configChainId;
 
     struct Call3Value {
         address target;
@@ -120,16 +154,51 @@ abstract contract MultisigProposal is Proposal {
             address addr = _proposalStateChangeAddresses[i];
             bool isAllowed;
             for (uint256 j; j < allowedStorageAccesses.length; j++) {
+                /// if this address was explicitly allowed in the proposal, or the caller is the multisig
                 if (
                     addresses.getAddress(
                         allowedStorageAccesses[j].contractAddressIdentifier, allowedStorageAccesses[j].l2ChainId
-                    ) == addr
+                    ) == addr || addr == caller
                 ) {
                     isAllowed = true;
                     break;
                 }
             }
-            require(isAllowed, "MultisigProposal: address not in allowed storage accesses");
+
+            /// make more verbose
+            require(
+                isAllowed,
+                string(
+                    abi.encodePacked(
+                        "MultisigProposal: address ", vm.toString(addr), " not in allowed storage accesses"
+                    )
+                )
+            );
         }
+
+        if (_accountAccesses.length != 1) {
+            require(safeConfigChangeAllowed == true, "MultisigProposal: ");
+
+            /// TODO check if the changes made to the multisig were valid
+            /// - check that modules are the same before and after
+            /// - check that owners are the same before and after
+            /// - check that the threshold is the same before and after
+            /// - check that fallback handler is the same before and after
+            /// - check that the logic contract is the same before and after
+        } else if (_accountAccesses.length == 1) {
+            require(
+                _accountAccesses[0].slot == NONCE_OFFSET,
+                string.concat(
+                    "MultisigProposal: modified multisig slot ",
+                    vm.toString(_accountAccesses[0].slot),
+                    " instead of ",
+                    vm.toString(NONCE_OFFSET)
+                )
+            );
+        }
+
+        _validate();
     }
+
+    function _validate() internal view virtual;
 }

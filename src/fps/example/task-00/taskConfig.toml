@@ -1,3 +1,6 @@
 [taskConfig]
 safeNonce = 10 # nonce to execute this transaction
 safeAddressString = "SystemConfigOwner" # address of the safe in AddressRegistry
+safeConfigChange = false # 
+safeOwnersChange = false
+chains = [10, 8453]

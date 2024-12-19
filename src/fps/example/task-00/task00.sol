@@ -10,7 +10,7 @@ interface SystemConfig {
 
 contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
     constructor() {
-        addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/chainlistExample.toml");
+        addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/taskConfig.toml");
     }
 
     function name() public pure override returns (string memory) {

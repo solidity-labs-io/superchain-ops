@@ -18,6 +18,10 @@ abstract contract MultisigProposal is Proposal {
     /// @notice the amount of modules to fetch from the Gnosis Safe
     uint256 public constant MODULES_FETCH_AMOUNT = 1_000;
 
+    /// @notice storage slot for the fallback handler
+    /// keccak256("fallback_manager.handler.address")
+    bytes32 public constant FALLBACK_HANDLER_STORAGE_SLOT = 0x6c9a6c4a39284e37ed1cf53d337577d14212a4870fb976a4366c693b939918d5;
+
     /// @notice nonce used for generating the safe transaction
     /// will be set to the value specified in the config file
     uint256 public nonce;
@@ -35,11 +39,14 @@ abstract contract MultisigProposal is Proposal {
     address public startingFallbackHandler;
 
     /// @notice starting logic contract
-    address public startingLogicContract;
+    string public startingImplementationVersion;
 
     /// @notice whether or not storage besides owners and nonce is allowed to
     /// be modified with this proposal
     bool public safeConfigChangeAllowed;
+
+    /// @notice whether or not owners are allowed to be modified with this proposal
+    bool public safeOwnersChangeAllowed;
 
     /// @notice array of L2 ChainIds this proposal will interface with
     /// TODO populate this in constructor, reading in toml config file
@@ -61,7 +68,7 @@ abstract contract MultisigProposal is Proposal {
     }
 
     constructor(string memory path) {
-        bytes memory fileContents = bytes(vm.readFile(path));
+        bytes memory fileContents = vm.parseTOML(vm.readFile(path));
         TaskConfig memory config = abi.decode(fileContents, (TaskConfig));
 
         /// whether or not to set the safe nonce manually
@@ -79,6 +86,14 @@ abstract contract MultisigProposal is Proposal {
                 "MultisigProposal: safe address mismatch"
             );
         }
+
+        /// Fetch starting owners, threshold, modules, fallback handler, and logic contract from the Gnosis Safe
+        IGnosisSafe safe = IGnosisSafe(caller);
+        startingOwners = safe.getOwners();
+        startingThreshold = safe.getThreshold();
+        (startingModules,) = safe.getModulesPaginated(address(0x1), MODULES_FETCH_AMOUNT);
+        startingFallbackHandler = address(uint160(uint256(safe.getStorageAt(FALLBACK_HANDLER_STORAGE_SLOT, 1))));
+        startingImplementationVersion = safe.VERSION();
     }
 
     /// @notice return calldata, log if debug is set to true
@@ -176,26 +191,29 @@ abstract contract MultisigProposal is Proposal {
             );
         }
 
-        if (_accountAccesses.length != 1) {
-            require(safeConfigChangeAllowed == true, "MultisigProposal: ");
-
-            /// TODO check if the changes made to the multisig were valid
-            /// - check that modules are the same before and after
-            /// - check that owners are the same before and after
-            /// - check that the threshold is the same before and after
-            /// - check that fallback handler is the same before and after
-            /// - check that the logic contract is the same before and after
-        } else if (_accountAccesses.length == 1) {
-            require(
-                _accountAccesses[0].slot == NONCE_OFFSET,
-                string.concat(
-                    "MultisigProposal: modified multisig slot ",
-                    vm.toString(_accountAccesses[0].slot),
-                    " instead of ",
-                    vm.toString(NONCE_OFFSET)
-                )
-            );
+        if(!safeOwnersChangeAllowed) {
+            address[] memory owners = IGnosisSafe(multisig).getOwners();
+            for (uint256 i = 0; i < owners.length; i++) {
+                require(owners[i] == startingOwners[i], "MultisigProposal: owner mismatch");
+            }
         }
+
+        if(!safeConfigChangeAllowed) {
+            uint256 threshold = IGnosisSafe(multisig).getThreshold();
+            (address[] memory modules,) = IGnosisSafe(multisig).getModulesPaginated(address(0x1), MODULES_FETCH_AMOUNT);
+            address fallbackHandler = address(uint160(uint256(IGnosisSafe(multisig).getStorageAt(FALLBACK_HANDLER_STORAGE_SLOT, 1))));
+            string memory version = IGnosisSafe(multisig).VERSION();
+
+            require(keccak256(abi.encodePacked(version)) == keccak256(abi.encodePacked(startingImplementationVersion)), "MultisigProposal: version mismatch");
+            require(threshold == startingThreshold, "MultisigProposal: threshold mismatch");
+            require(fallbackHandler == startingFallbackHandler, "MultisigProposal: fallback handler mismatch");
+
+            for (uint256 i = 0; i < modules.length; i++) {
+                require(modules[i] == startingModules[i], "MultisigProposal: module mismatch");
+            }
+        }
+
+        require(IGnosisSafe(multisig).nonce() == nonce + 1, "MultisigProposal: nonce not incremented");
 
         _validate();
     }

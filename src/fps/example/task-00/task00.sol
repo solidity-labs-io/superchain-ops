@@ -29,14 +29,12 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
     }
 
     function build() public override buildModifier {
-        /// TODO make another version that does loop over config
-
         for (uint256 i = 0; i < l2ChainIds.length; i++) {
             /// view only, filtered out by Proposal.sol
             SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", l2ChainIds[i]));
 
             /// mutative call, recorded by Proposal.sol for generating multisig calldata
-            systemConfig.setGasLimit(100_000);
+            systemConfig.setGasLimit(100_000_000);
         }
     }
 

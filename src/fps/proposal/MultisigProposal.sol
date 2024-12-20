@@ -634,7 +634,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             if (accountAccesses[i].kind == VmSafe.AccountAccessKind.DelegateCall) {
                 require(
                     accountAccesses[i].account == MULTICALL3_ADDRESS,
-                    string.concat("Unauthorized DelegateCall to address", vm.toString(accountAccesses[i].account))
+                    string.concat("Unauthorized DelegateCall to address ", vm.getLabel(accountAccesses[i].account))
                 );
             }
 

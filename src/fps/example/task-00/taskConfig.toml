@@ -1,37 +1,15 @@
+[task]
 safeConfigChange = false
 safeOwnersChange = false
-safeAddressString = "SystemConfigOwner"
+safeAddressString = "ProxyAdminOwner"
 allowedStorageAccesses = ["SystemConfigProxy"]
+mainnetTask = {safeNonce = 10, networks = [{l2ChainId = 7777777, networkName = "Zora"}, {l2ChainId = 10, networkName = "OP Mainnet"}] }
+sepoliaTask = { safeNonce = 20, networks = [{l2ChainId = 999999999, networkName = "Zora Sepolia Testnet"}, {l2ChainId = 11155420, networkName = "OP Sepolia Testnet"}] }
 
-[mainnet.task1]
-safeNonce = 10
+[[chains]]
+  name = "OP Mainnet"
+  chainId = 10
 
-[[mainnet.task1.l2chains]]
-name = "OP Mainnet"
-chain_id = 10
-
-[[mainnet.task1.l2chains]]
-name = "Base"
-chain_id = 8453
-
-[mainnet.task2]
-safeNonce = 15
-
-[[mainnet.task2.l2chains]]
-name = "OP Mainnet"
-chain_id = 10
-
-[[mainnet.task2.l2chains]]
-name = "Base"
-chain_id = 8453
-
-[sepolia.task1]
-safeNonce = 20
-
-[[sepolia.task1.l2chains]]
-name = "OP Sepolia Testnet"
-chain_id = 11155420
-
-[[sepolia.task1.l2chains]]
-name = "Base Sepolia Testnet"
-chain_id = 84532
+[[chains]]
+  name = "Zora"
+  chainId = 7777777

@@ -27,7 +27,6 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml", "
     }
 
     function build() public override buildModifier {
-
         Addresses.Superchain[] memory superchains = addresses.getSuperchains();
 
         for (uint256 i = 0; i < superchains.length; i++) {

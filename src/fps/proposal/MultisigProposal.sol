@@ -194,7 +194,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         safeOwnersChangeAllowed = config.safeOwnersChange;
 
         string memory networkName;
-        if(block.chainid == ETHEREUM_CHAIN_ID) {
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
             networkName = "mainnet";
         } else if (block.chainid == SEPOLIA_CHAIN_ID) {
             networkName = "sepolia";
@@ -202,7 +202,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             revert("Unsupported network");
         }
 
-        bytes memory safeNonce = vm.parseToml(vm.readFile(path), string(abi.encodePacked(".", networkName, ".", taskName, ".safeNonce")));
+        bytes memory safeNonce =
+            vm.parseToml(vm.readFile(path), string(abi.encodePacked(".", networkName, ".", taskName, ".safeNonce")));
         nonce = abi.decode(safeNonce, (uint256));
     }
 
@@ -240,11 +241,11 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         data = abi.encodeWithSignature("aggregate3Value((address,bool,uint256,bytes)[])", calls);
     }
 
-    function printDataToSign() public virtual view {
+    function printDataToSign() public view virtual {
         console.logBytes(_getDataToSign(caller, getCalldata()));
     }
 
-    function printHashToApprove() public virtual view {
+    function printHashToApprove() public view virtual {
         bytes32 hash = keccak256(_getDataToSign(caller, getCalldata()));
         console.logBytes32(hash);
     }
@@ -437,7 +438,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
         for (uint256 i = 0; i < config.authorizedDelegateCalls.length; i++) {
             for (uint256 j = 0; j < superchains.length; j++) {
-                _allowedDelegateCalls[addresses.getAddress(config.authorizedDelegateCalls[i], superchains[j].chainId)] = true;
+                _allowedDelegateCalls[addresses.getAddress(config.authorizedDelegateCalls[i], superchains[j].chainId)] =
+                    true;
             }
         }
     }

@@ -1,12 +1,11 @@
 pragma solidity 0.8.15;
 
-import {console} from "forge-std/console.sol"; 
+import {console} from "forge-std/console.sol";
 
 import {IGnosisSafe, Enum} from "src/fps/proposal/IGnosisSafe.sol";
 import {MultisigProposal} from "src/fps/proposal/MultisigProposal.sol";
 
 abstract contract NestedMultisigProposal is MultisigProposal {
-
     function _generateApproveMulticallData() internal view returns (bytes memory) {
         bytes32 hash = keccak256(_getDataToSign(caller, getCalldata()));
         Call3Value memory call = Call3Value({
@@ -21,7 +20,7 @@ abstract contract NestedMultisigProposal is MultisigProposal {
         return abi.encodeWithSignature("aggregate3Value((address,bool,uint256,bytes)[])", calls);
     }
 
-    function printDataToSign() public virtual override view {
+    function printDataToSign() public view virtual override {
         bytes memory callData = _generateApproveMulticallData();
 
         for (uint256 i; i < startingOwners.length; i++) {
@@ -30,7 +29,7 @@ abstract contract NestedMultisigProposal is MultisigProposal {
         }
     }
 
-    function printHashToApprove() public virtual override view {
+    function printHashToApprove() public view virtual override {
         bytes memory callData = _generateApproveMulticallData();
 
         for (uint256 i; i < startingOwners.length; i++) {

@@ -54,14 +54,17 @@ contract AddressRegistry is IAddressRegistry, Test {
     /// @param superchainListFilePath The path to the TOML file containing the list of supported L2 chains
     constructor(string memory addressFolderPath, string memory superchainListFilePath, string memory taskName) {
         string memory networkName;
-        if(block.chainid == ETHEREUM_CHAIN_ID) {
+        if (block.chainid == ETHEREUM_CHAIN_ID) {
             networkName = "mainnet";
         } else if (block.chainid == SEPOLIA_CHAIN_ID) {
             networkName = "sepolia";
         } else {
             revert("Unsupported network");
         }
-        bytes memory superchainListContent = vm.parseToml(vm.readFile(superchainListFilePath), string(abi.encodePacked(".", networkName, ".", taskName, ".", "l2chains")));
+        bytes memory superchainListContent = vm.parseToml(
+            vm.readFile(superchainListFilePath),
+            string(abi.encodePacked(".", networkName, ".", taskName, ".", "l2chains"))
+        );
         superchains = abi.decode(superchainListContent, (Superchain[]));
 
         string memory superchainAddressesContent = vm.readFile(SUPERCHAIN_REGISTRY_PATH);

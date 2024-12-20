@@ -6,7 +6,7 @@ import {NetworkTranslator} from "src/fps/utils/NetworkTranslator.sol";
 import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
 import {BASE_CHAIN_ID, OP_CHAIN_ID} from "src/fps/utils/Constants.sol";
 
-contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
+contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml", "task1") {
     using NetworkTranslator for uint256;
 
     /// @notice New gas limit to be set
@@ -14,7 +14,7 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
 
     /// TODO add support for passing the addresses object
     constructor() {
-        Addresses _addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/taskConfig.toml");
+        Addresses _addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/taskConfig.toml", "task1");
         setAddresses(_addresses);
     }
 
@@ -27,9 +27,12 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
     }
 
     function build() public override buildModifier {
-        for (uint256 i = 0; i < l2ChainIds.length; i++) {
+
+        Addresses.Superchain[] memory superchains = addresses.getSuperchains();
+
+        for (uint256 i = 0; i < superchains.length; i++) {
             /// view only, filtered out by Proposal.sol
-            SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", l2ChainIds[i]));
+            SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", superchains[i].chainId));
 
             /// mutative call, recorded by Proposal.sol for generating multisig calldata
             systemConfig.setGasLimit(NEW_GAS_LIMIT);
@@ -37,8 +40,9 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
     }
 
     function _validate() internal view override {
-        for (uint256 i = 0; i < l2ChainIds.length; i++) {
-            SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", l2ChainIds[i]));
+        Addresses.Superchain[] memory superchains = addresses.getSuperchains();
+        for (uint256 i = 0; i < superchains.length; i++) {
+            SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", superchains[i].chainId));
             assertEq(systemConfig.gasLimit(), NEW_GAS_LIMIT, "Op gas limit not set");
         }
     }

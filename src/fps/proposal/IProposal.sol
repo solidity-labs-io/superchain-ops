@@ -7,6 +7,7 @@ interface IProposal {
         string contractAddressIdentifier;
         uint256 l2ChainId;
     }
+
     /// @notice proposal name, e.g. "BIP15".
     /// @dev override this to set the proposal name.
 

@@ -9,9 +9,5 @@ authorizedDelegateCalls = ["SYSTEM_CONFIG_LOGIC"]
 safeNonce = 67
 
 [[mainnet.task1.l2chains]]
-name = "Orderly"
-chain_id = 291
-
-[[mainnet.task1.l2chains]]
-name = "Metal"
-chain_id = 1750
+name = "OP Mainnet"
+chain_id = 10

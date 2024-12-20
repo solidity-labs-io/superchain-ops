@@ -13,5 +13,5 @@ name = "Orderly"
 chain_id = 291
 
 [[mainnet.task1.l2chains]]
-name = "Metal"
+name = ""
 chain_id = 1750

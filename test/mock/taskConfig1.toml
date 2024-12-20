@@ -10,7 +10,7 @@ safeNonce = 67
 
 [[mainnet.task1.l2chains]]
 name = "Orderly"
-chain_id = 291
+chain_id = 0
 
 [[mainnet.task1.l2chains]]
 name = "Metal"

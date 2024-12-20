@@ -92,7 +92,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
     /// @notice struct to store allowed storage accesses
     /// maps a chainid to an array of allowed storage accesses for that chain
-    mapping(uint256 => AllowedStorageAccesses[]) private _chainIdAllowedStorageAccesses;
+    AllowedStorageAccesses[] private _allowedStorageAccesses;
 
     /// addresses that are allowed to be the receivers of delegate calls
     mapping(address => bool) private _allowedDelegateCalls;
@@ -155,21 +155,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     struct TaskConfig {
         string[] allowedStorageAccesses;
         string[] authorizedDelegateCalls;
-        NetworkTask mainnetTask;
         string safeAddressString;
         bool safeConfigChange;
         bool safeOwnersChange;
-        NetworkTask sepoliaTask;
-    }
-
-    struct NetworkTask {
-        NetworkConfig[] networks;
-        uint256 safeNonce;
-    }
-
-    struct NetworkConfig {
-        uint256 l2ChainId;
-        string networkName;
     }
 
     /// configuration set at construction
@@ -189,7 +177,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         _endBuild();
     }
 
-    constructor(string memory path) {
+    constructor(string memory path, string memory taskName) {
         /// read in proposal configuration
         DEBUG = vm.envOr("DEBUG", false);
 
@@ -204,6 +192,18 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
         safeConfigChangeAllowed = config.safeConfigChange;
         safeOwnersChangeAllowed = config.safeOwnersChange;
+
+        string memory networkName;
+        if(block.chainid == ETHEREUM_CHAIN_ID) {
+            networkName = "mainnet";
+        } else if (block.chainid == SEPOLIA_CHAIN_ID) {
+            networkName = "sepolia";
+        } else {
+            revert("Unsupported network");
+        }
+
+        bytes memory safeNonce = vm.parseToml(vm.readFile(path), string(abi.encodePacked(".", networkName, ".", taskName, ".safeNonce")));
+        nonce = abi.decode(safeNonce, (uint256));
     }
 
     /// @notice function to be used by forge script.
@@ -240,11 +240,20 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         data = abi.encodeWithSignature("aggregate3Value((address,bool,uint256,bytes)[])", calls);
     }
 
-    function getDataToSign() public view returns (bytes memory data) {
-        data = IGnosisSafe(caller).encodeTransactionData({
+    function printDataToSign() public virtual view {
+        console.logBytes(_getDataToSign(caller, getCalldata()));
+    }
+
+    function printHashToApprove() public virtual view {
+        bytes32 hash = keccak256(_getDataToSign(caller, getCalldata()));
+        console.logBytes32(hash);
+    }
+
+    function _getDataToSign(address safe, bytes memory data) internal view returns (bytes memory) {
+        return IGnosisSafe(safe).encodeTransactionData({
             to: MULTICALL3_ADDRESS,
             value: 0,
-            data: getCalldata(),
+            data: data,
             operation: Enum.Operation.DelegateCall,
             safeTxGas: 0,
             baseGas: 0,
@@ -253,10 +262,6 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             refundReceiver: address(0),
             _nonce: nonce
         });
-    }
-
-    function getHashToApprove() public view returns (bytes32 hash) {
-        hash = keccak256(getDataToSign());
     }
 
     /// @notice actually simulates the proposal.
@@ -284,7 +289,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
     /// @notice returns the allowed storage accesses for the current chain id
     function getAllowedStorageAccess() public view returns (AllowedStorageAccesses[] memory) {
-        return _chainIdAllowedStorageAccesses[block.chainid];
+        return _allowedStorageAccesses;
     }
 
     /// @notice execute post-proposal checks.
@@ -348,6 +353,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
                 require(modules[i] == startingModules[i], "MultisigProposal: module changed");
             }
         }
+
+        // todo: simulate with private key so that nonce is incremented
+        // require(IGnosisSafe(caller).nonce() == nonce + 1, "MultisigProposal: safe nonce not incremented");
 
         _validate();
     }
@@ -417,61 +425,19 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         startingImplementationVersion = safe.VERSION();
 
         for (uint256 i = 0; i < config.allowedStorageAccesses.length; i++) {
-            for (uint256 j = 0; j < config.mainnetTask.networks.length; j++) {
-                _chainIdAllowedStorageAccesses[ETHEREUM_CHAIN_ID].push(
-                    AllowedStorageAccesses({
-                        contractAddressIdentifier: config.allowedStorageAccesses[i],
-                        l2ChainId: config.mainnetTask.networks[j].l2ChainId
-                    })
-                );
-
-                if (block.chainid == ETHEREUM_CHAIN_ID) {
-                    l2ChainIds.push(config.mainnetTask.networks[j].l2ChainId);
-                }
-            }
-
-            for (uint256 j = 0; j < config.sepoliaTask.networks.length; j++) {
-                _chainIdAllowedStorageAccesses[SEPOLIA_CHAIN_ID].push(
-                    AllowedStorageAccesses({
-                        contractAddressIdentifier: config.allowedStorageAccesses[i],
-                        l2ChainId: config.sepoliaTask.networks[j].l2ChainId
-                    })
-                );
-
-                if (block.chainid == SEPOLIA_CHAIN_ID) {
-                    l2ChainIds.push(config.sepoliaTask.networks[j].l2ChainId);
-                }
-            }
-        }
-
-        require(
-            superchains.length == l2ChainIds.length,
-            string.concat(
-                "MultisigProposal: l2ChainId length mismatch, ",
-                vm.toString(l2ChainIds.length),
-                " l2 chainIds, and ",
-                vm.toString(superchains.length),
-                " superchains."
-            )
-        );
-
-        for (uint256 i = 0; i < l2ChainIds.length; i++) {
-            bool foundChainid = false;
             for (uint256 j = 0; j < superchains.length; j++) {
-                if (l2ChainIds[i] == superchains[j].chainId) {
-                    foundChainid = true;
-                    break;
-                }
+                _allowedStorageAccesses.push(
+                    AllowedStorageAccesses({
+                        contractAddressIdentifier: config.allowedStorageAccesses[i],
+                        l2ChainId: superchains[j].chainId
+                    })
+                );
             }
-            require(
-                foundChainid,
-                string.concat("MultisigProposal: l2ChainId ", vm.toString(l2ChainIds[i]), " not found in superchains")
-            );
         }
 
         for (uint256 i = 0; i < config.authorizedDelegateCalls.length; i++) {
-            for (uint256 j = 0; j < l2ChainIds.length; j++) {
-                _allowedDelegateCalls[addresses.getAddress(config.authorizedDelegateCalls[i], l2ChainIds[j])] = true;
+            for (uint256 j = 0; j < superchains.length; j++) {
+                _allowedDelegateCalls[addresses.getAddress(config.authorizedDelegateCalls[i], superchains[j].chainId)] = true;
             }
         }
     }
@@ -561,10 +527,10 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         _printProposalCalldata();
 
         console.log("\n\n------------------ Data to Sign ------------------");
-        console.logBytes(getDataToSign());
+        printDataToSign();
 
         console.log("\n\n------------------ Hash to Approve ------------------");
-        console.logBytes32(getHashToApprove());
+        printHashToApprove();
     }
 
     /// --------------------------------------------------------------------

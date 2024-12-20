@@ -3,14 +3,41 @@ safeConfigChange = false
 safeOwnersChange = false
 safeAddressString = "SystemConfigOwner"
 allowedStorageAccesses = ["SystemConfigProxy"]
-mainnetTask = {safeNonce = 10, networks = [{l2ChainId = 291, networkName = "Orderly"}, {l2ChainId = 1750, networkName = "Orderly"}] }
-sepoliaTask = { safeNonce = 20, networks = [{l2ChainId = 1740, networkName = "Metal Sepolia Testnet"}] }
 authorizedDelegateCalls = ["SYSTEM_CONFIG_LOGIC"]
 
-[[chains]]
-  name = "Orderly"
-  chainId = 291
+[mainnet.task1]
+safeNonce = 67
 
-[[chains]]
-  name = "Metal"
-  chainId = 1750
+[[mainnet.task1.l2chains]]
+name = "Orderly"
+chain_id = 291
+
+[[mainnet.task1.l2chains]]
+name = "Metal"
+chain_id = 1750
+
+[mainnet.task2]
+safeNonce = 15
+
+[[mainnet.task2.l2chains]]
+name = "OP Mainnet"
+chain_id = 1740
+
+[[mainnet.task2.l2chains]]
+name = "Base"
+chain_id = 919
+
+[sepolia.task1]
+safeNonce = 10
+
+[[sepolia.task1.l2chains]]
+name = "Mode Testnet"
+chain_id = 919
+
+[[sepolia.task1.l2chains]]
+name = "Metal L2 Testnet"
+chain_id = 1740
+
+[[sepolia.task1.l2chains]]
+name = "Zora Sepolia Testnet"
+chain_id = 999999999

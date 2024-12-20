@@ -642,8 +642,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             /// static calls are ignored,
             /// calls to and from Addresses and the vm contract are ignored
             /// ignore calls to vm in the build function
+            /// TODO should we remove this condition? it may filter out calls that we need
             if (
-                /// TODO should we remove this condition? it may filter out calls that we need
                 accountAccesses[i].account != address(addresses) && accountAccesses[i].account != address(vm)
                     && accountAccesses[i].accessor != address(addresses)
                     && accountAccesses[i].kind == VmSafe.AccountAccessKind.Call && accountAccesses[i].accessor == caller

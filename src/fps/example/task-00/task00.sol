@@ -1,18 +1,16 @@
 pragma solidity 0.8.15;
 
+import {SystemConfig} from "src/fps/example/ISystemConfig.sol";
 import {MultisigProposal} from "src/fps/proposal/MultisigProposal.sol";
 import {NetworkTranslator} from "src/fps/utils/NetworkTranslator.sol";
 import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
 import {BASE_CHAIN_ID, OP_CHAIN_ID} from "src/fps/utils/Constants.sol";
 
-interface SystemConfig {
-    function setGasLimit(uint64) external;
-
-    function gasLimit() external view returns (uint64);
-}
-
 contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
     using NetworkTranslator for uint256;
+
+    /// @notice New gas limit to be set
+    uint64 public constant NEW_GAS_LIMIT = 100_000_000;
 
     /// TODO add support for passing the addresses object
     constructor() {
@@ -34,14 +32,14 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
             SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", l2ChainIds[i]));
 
             /// mutative call, recorded by Proposal.sol for generating multisig calldata
-            systemConfig.setGasLimit(100_000_000);
+            systemConfig.setGasLimit(NEW_GAS_LIMIT);
         }
     }
 
     function _validate() internal view override {
         for (uint256 i = 0; i < l2ChainIds.length; i++) {
             SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", l2ChainIds[i]));
-            assertEq(systemConfig.gasLimit(), 100_000, "Op gas limit not set");
+            assertEq(systemConfig.gasLimit(), NEW_GAS_LIMIT, "Op gas limit not set");
         }
     }
 }

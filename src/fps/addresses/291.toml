@@ -14,3 +14,8 @@ isContract = true
 addr = "0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3"
 identifier = "COMPOUND_CONFIGURATOR"
 isContract = true
+
+[[addresses]]
+addr = "0xba2492e52F45651B60B8B38d4Ea5E2390C64Ffb1"
+identifier = "SYSTEM_CONFIG_LOGIC"
+isContract = true

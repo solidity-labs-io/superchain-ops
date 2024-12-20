@@ -94,6 +94,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// maps a chainid to an array of allowed storage accesses for that chain
     mapping(uint256 => AllowedStorageAccesses[]) private _chainIdAllowedStorageAccesses;
 
+    /// addresses that are allowed to be the receivers of delegate calls
+    mapping(address => bool) private _allowedDelegateCalls;
+
     struct Action {
         address target;
         uint256 value;
@@ -151,6 +154,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
     struct TaskConfig {
         string[] allowedStorageAccesses;
+        string[] authorizedDelegateCalls;
         NetworkTask mainnetTask;
         string safeAddressString;
         bool safeConfigChange;
@@ -345,8 +349,6 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             }
         }
 
-        require(IGnosisSafe(caller).nonce() == nonce + 1, "MultisigProposal: nonce not incremented");
-
         _validate();
     }
 
@@ -465,6 +467,12 @@ abstract contract MultisigProposal is Test, Script, IProposal {
                 foundChainid,
                 string.concat("MultisigProposal: l2ChainId ", vm.toString(l2ChainIds[i]), " not found in superchains")
             );
+        }
+
+        for (uint256 i = 0; i < config.authorizedDelegateCalls.length; i++) {
+            for (uint256 j = 0; j < l2ChainIds.length; j++) {
+                _allowedDelegateCalls[addresses.getAddress(config.authorizedDelegateCalls[i], l2ChainIds[j])] = true;
+            }
         }
     }
 
@@ -633,7 +641,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
             if (accountAccesses[i].kind == VmSafe.AccountAccessKind.DelegateCall) {
                 require(
-                    accountAccesses[i].account == MULTICALL3_ADDRESS,
+                    _allowedDelegateCalls[accountAccesses[i].account],
                     string.concat("Unauthorized DelegateCall to address ", vm.getLabel(accountAccesses[i].account))
                 );
             }

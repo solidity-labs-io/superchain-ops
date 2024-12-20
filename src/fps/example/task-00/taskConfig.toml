@@ -5,6 +5,7 @@ safeAddressString = "SystemConfigOwner"
 allowedStorageAccesses = ["SystemConfigProxy"]
 mainnetTask = {safeNonce = 10, networks = [{l2ChainId = 291, networkName = "Orderly"}, {l2ChainId = 1750, networkName = "Orderly"}] }
 sepoliaTask = { safeNonce = 20, networks = [{l2ChainId = 1740, networkName = "Metal Sepolia Testnet"}] }
+authorizedDelegateCalls = ["SYSTEM_CONFIG_LOGIC"]
 
 [[chains]]
   name = "Orderly"

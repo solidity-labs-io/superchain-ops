@@ -178,14 +178,12 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     }
 
     constructor(string memory path) {
-        /// read in proposal configuration
-        DEBUG = vm.envOr("DEBUG", false);
-
-        DO_MOCK = vm.envOr("DO_MOCK", true);
-        DO_BUILD = vm.envOr("DO_BUILD", true);
-        DO_SIMULATE = vm.envOr("DO_SIMULATE", true);
-        DO_VALIDATE = vm.envOr("DO_VALIDATE", true);
-        DO_PRINT = vm.envOr("DO_PRINT", true);
+        DEBUG = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.debug"), (bool));
+        DO_MOCK = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doMock"), (bool));
+        DO_BUILD = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doBuild"), (bool));
+        DO_SIMULATE = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doSimulate"), (bool));
+        DO_VALIDATE = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doValidate"), (bool));
+        DO_PRINT = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doPrint"), (bool));
 
         bytes memory fileContents = vm.parseToml(vm.readFile(path), ".task");
         config = abi.decode(fileContents, (TaskConfig));
@@ -202,13 +200,15 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             revert("Unsupported network");
         }
 
-        bytes memory currentTask = vm.parseToml(vm.readFile(path), string.concat(".currentTaskIndex"));
-        uint256 currentTaskIndex = abi.decode(currentTask, (uint256));
+        uint256 currentTaskIndex =
+            abi.decode(vm.parseToml(vm.readFile(path), string.concat(".currentTaskIndex")), (uint256));
 
-        bytes memory safeNonce = vm.parseToml(
-            vm.readFile(path), string.concat(".", networkName, "[", vm.toString(currentTaskIndex), "].safeNonce")
+        nonce = abi.decode(
+            vm.parseToml(
+                vm.readFile(path), string.concat(".", networkName, "[", vm.toString(currentTaskIndex), "].safeNonce")
+            ),
+            (uint256)
         );
-        nonce = abi.decode(safeNonce, (uint256));
     }
 
     /// @notice function to be used by forge script.

@@ -163,6 +163,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// configuration set at construction
     TaskConfig public config;
 
+    bool private _buildStarted;
+
     /// @notice buildModifier to be used by the build function to populate the
     /// actions array
     modifier buildModifier() {
@@ -172,9 +174,14 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             require(DO_BUILD, "Cannot simulate/print without first building");
         }
 
+        require(!_buildStarted, "Build already started");
+        _buildStarted = true;
+
         _startBuild();
         _;
         _endBuild();
+
+        _buildStarted = false;
     }
 
     constructor(string memory path, string memory taskName) {
@@ -459,7 +466,15 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @dev contract calls must be perfomed in plain solidity.
     ///      overriden requires using buildModifier modifier to leverage
     ///      foundry snapshot and state diff recording to populate the actions array.
-    function build() public virtual;
+    function build() public buildModifier {
+        Addresses.Superchain[] memory superchains = addresses.getSuperchains();
+
+        for (uint256 i = 0; i < superchains.length; i++) {
+            _build(superchains[i].chainId);
+        }
+    }
+
+    function _build(uint256 chainId) internal virtual;
 
     /// @notice print proposal description, actions and calldata
     function print() public virtual {

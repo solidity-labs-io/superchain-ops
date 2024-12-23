@@ -211,17 +211,11 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @dev use flags to determine which actions to take
     ///      this function shoudn't be overriden.
     function run() public {
-        console.log("run function start");
         if (DO_MOCK) mock();
-        console.log("run function mocked");
         if (DO_BUILD) build();
-        console.log("run function deployed");
         if (DO_SIMULATE) simulate();
-        console.log("run function simulated");
         if (DO_VALIDATE) validate();
-        console.log("run function validated");
         if (DO_PRINT) print();
-        console.log("run function printed");
     }
 
     /// @notice return calldata, log if debug is set to true
@@ -442,13 +436,6 @@ abstract contract MultisigProposal is Test, Script, IProposal {
                     true;
             }
         }
-    }
-
-    /// TODO can we remove this??
-
-    /// @notice set the primary fork id
-    function setPrimaryForkId(uint256 _primaryForkId) public override {
-        primaryForkId = _primaryForkId;
     }
 
     /// @notice helper function to mock on-chain data

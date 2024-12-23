@@ -177,7 +177,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         _endBuild();
     }
 
-    constructor(string memory path, string memory taskName) {
+    constructor(string memory path) {
         /// read in proposal configuration
         DEBUG = vm.envOr("DEBUG", false);
 
@@ -202,8 +202,12 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             revert("Unsupported network");
         }
 
-        bytes memory safeNonce =
-            vm.parseToml(vm.readFile(path), string(abi.encodePacked(".", networkName, ".", taskName, ".safeNonce")));
+        bytes memory currentTask = vm.parseToml(vm.readFile(path), string.concat(".currentTaskIndex"));
+        uint256 currentTaskIndex = abi.decode(currentTask, (uint256));
+
+        bytes memory safeNonce = vm.parseToml(
+            vm.readFile(path), string.concat(".", networkName, "[", vm.toString(currentTaskIndex), "].safeNonce")
+        );
         nonce = abi.decode(safeNonce, (uint256));
     }
 
@@ -348,9 +352,6 @@ abstract contract MultisigProposal is Test, Script, IProposal {
                 require(modules[i] == startingModules[i], "MultisigProposal: module changed");
             }
         }
-
-        // todo: simulate with private key so that nonce is incremented
-        // require(IGnosisSafe(caller).nonce() == nonce + 1, "MultisigProposal: safe nonce not incremented");
 
         _validate();
     }

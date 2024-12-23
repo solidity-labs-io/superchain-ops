@@ -6,7 +6,7 @@ import {NetworkTranslator} from "src/fps/utils/NetworkTranslator.sol";
 import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
 import {BASE_CHAIN_ID, OP_CHAIN_ID} from "src/fps/utils/Constants.sol";
 
-contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml", "task1") {
+contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml") {
     using NetworkTranslator for uint256;
 
     /// @notice New gas limit to be set
@@ -14,7 +14,7 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml", "
 
     /// TODO add support for passing the addresses object
     constructor() {
-        Addresses _addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/taskConfig.toml", "task1");
+        Addresses _addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/taskConfig.toml");
         setAddresses(_addresses);
     }
 

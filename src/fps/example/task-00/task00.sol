@@ -12,10 +12,14 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml", "
     /// @notice New gas limit to be set
     uint64 public constant NEW_GAS_LIMIT = 100_000_000;
 
+    mapping(uint256 => uint64) public gasLimits;
+
     /// TODO add support for passing the addresses object
     constructor() {
         Addresses _addresses = new Addresses("src/fps/addresses", "src/fps/example/task-00/taskConfig.toml", "task1");
         setAddresses(_addresses);
+
+        /// TODO set gasLimits
     }
 
     function name() public pure override returns (string memory) {
@@ -26,16 +30,12 @@ contract Task00 is MultisigProposal("src/fps/example/task-00/taskConfig.toml", "
         return "Set gas limit to 100,000";
     }
 
-    function build() public override buildModifier {
-        Addresses.Superchain[] memory superchains = addresses.getSuperchains();
+    function _build(uint256 chainId) internal override {
+        /// view only, filtered out by Proposal.sol
+        SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", chainId));
 
-        for (uint256 i = 0; i < superchains.length; i++) {
-            /// view only, filtered out by Proposal.sol
-            SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", superchains[i].chainId));
-
-            /// mutative call, recorded by Proposal.sol for generating multisig calldata
-            systemConfig.setGasLimit(NEW_GAS_LIMIT);
-        }
+        /// mutative call, recorded by Proposal.sol for generating multisig calldata
+        systemConfig.setGasLimit(gasLimits[chainId]);
     }
 
     function _validate() internal view override {

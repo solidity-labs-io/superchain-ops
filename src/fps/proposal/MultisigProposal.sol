@@ -184,15 +184,13 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         _buildStarted = false;
     }
 
-    constructor(string memory path, string memory taskName) {
-        /// read in proposal configuration
-        DEBUG = vm.envOr("DEBUG", false);
-
-        DO_MOCK = vm.envOr("DO_MOCK", true);
-        DO_BUILD = vm.envOr("DO_BUILD", true);
-        DO_SIMULATE = vm.envOr("DO_SIMULATE", true);
-        DO_VALIDATE = vm.envOr("DO_VALIDATE", true);
-        DO_PRINT = vm.envOr("DO_PRINT", true);
+    constructor(string memory path) {
+        DEBUG = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.debug"), (bool));
+        DO_MOCK = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doMock"), (bool));
+        DO_BUILD = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doBuild"), (bool));
+        DO_SIMULATE = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doSimulate"), (bool));
+        DO_VALIDATE = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doValidate"), (bool));
+        DO_PRINT = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doPrint"), (bool));
 
         bytes memory fileContents = vm.parseToml(vm.readFile(path), ".task");
         config = abi.decode(fileContents, (TaskConfig));
@@ -209,26 +207,26 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             revert("Unsupported network");
         }
 
-        bytes memory safeNonce =
-            vm.parseToml(vm.readFile(path), string(abi.encodePacked(".", networkName, ".", taskName, ".safeNonce")));
-        nonce = abi.decode(safeNonce, (uint256));
+        uint256 currentTaskIndex =
+            abi.decode(vm.parseToml(vm.readFile(path), string.concat(".currentTaskIndex")), (uint256));
+
+        nonce = abi.decode(
+            vm.parseToml(
+                vm.readFile(path), string.concat(".", networkName, "[", vm.toString(currentTaskIndex), "].safeNonce")
+            ),
+            (uint256)
+        );
     }
 
     /// @notice function to be used by forge script.
     /// @dev use flags to determine which actions to take
     ///      this function shoudn't be overriden.
     function run() public {
-        console.log("run function start");
         if (DO_MOCK) mock();
-        console.log("run function mocked");
         if (DO_BUILD) build();
-        console.log("run function deployed");
         if (DO_SIMULATE) simulate();
-        console.log("run function simulated");
         if (DO_VALIDATE) validate();
-        console.log("run function validated");
         if (DO_PRINT) print();
-        console.log("run function printed");
     }
 
     /// @notice return calldata, log if debug is set to true
@@ -362,9 +360,6 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             }
         }
 
-        // todo: simulate with private key so that nonce is incremented
-        // require(IGnosisSafe(caller).nonce() == nonce + 1, "MultisigProposal: safe nonce not incremented");
-
         _validate();
     }
 
@@ -449,13 +444,6 @@ abstract contract MultisigProposal is Test, Script, IProposal {
                     true;
             }
         }
-    }
-
-    /// TODO can we remove this??
-
-    /// @notice set the primary fork id
-    function setPrimaryForkId(uint256 _primaryForkId) public override {
-        primaryForkId = _primaryForkId;
     }
 
     /// @notice helper function to mock on-chain data

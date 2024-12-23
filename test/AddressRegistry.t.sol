@@ -16,7 +16,7 @@ contract MainnetAddressRegistryTest is Test {
 
         vm.createSelectFork("mainnet");
 
-        addresses = new AddressRegistry(tomlFilePath, tomlchainListPath, "task1");
+        addresses = new AddressRegistry(tomlFilePath, tomlchainListPath);
     }
 
     function testContractState() public view {
@@ -176,7 +176,7 @@ contract MainnetAddressRegistryTest is Test {
         string memory tomlchainListPath = "test/mock/taskConfig1.toml";
 
         vm.expectRevert("Invalid chain ID in superchain config");
-        new AddressRegistry(tomlFilePath, tomlchainListPath, "task1");
+        new AddressRegistry(tomlFilePath, tomlchainListPath);
     }
 
     function testEmptyNameInSuperchainsFails() public {
@@ -184,7 +184,7 @@ contract MainnetAddressRegistryTest is Test {
         string memory tomlchainListPath = "test/mock/taskConfig2.toml";
 
         vm.expectRevert("Empty name in superchain config");
-        new AddressRegistry(tomlFilePath, tomlchainListPath, "task1");
+        new AddressRegistry(tomlFilePath, tomlchainListPath);
     }
 
     function testDuplicateChainIdInSuperchainsFails() public {
@@ -192,7 +192,7 @@ contract MainnetAddressRegistryTest is Test {
         string memory tomlchainListPath = "test/mock/taskConfig3.toml";
 
         vm.expectRevert("Duplicate chain ID in superchain config");
-        new AddressRegistry(tomlFilePath, tomlchainListPath, "task1");
+        new AddressRegistry(tomlFilePath, tomlchainListPath);
     }
 
     function testConstructionFailsIncorrectTypesEOA() public {
@@ -200,7 +200,7 @@ contract MainnetAddressRegistryTest is Test {
         string memory tomlchainListPath = "test/mock/data1/taskConfig.toml";
 
         vm.expectRevert("Address must contain code");
-        new AddressRegistry(tomlFilePath, tomlchainListPath, "task1");
+        new AddressRegistry(tomlFilePath, tomlchainListPath);
     }
 
     function testConstructionFailsIncorrectTypesContract() public {
@@ -208,7 +208,7 @@ contract MainnetAddressRegistryTest is Test {
         string memory tomlchainListPath = "test/mock/data2/taskConfig.toml";
 
         vm.expectRevert("Address must not contain code");
-        new AddressRegistry(tomlFilePath, tomlchainListPath, "task1");
+        new AddressRegistry(tomlFilePath, tomlchainListPath);
     }
 
     function testConstructionFailsAddressZero() public {
@@ -216,7 +216,7 @@ contract MainnetAddressRegistryTest is Test {
         string memory tomlchainListPath = "test/mock/data3/taskConfig.toml";
 
         vm.expectRevert("Invalid address: cannot be zero");
-        new AddressRegistry(tomlFilePath, tomlchainListPath, "task1");
+        new AddressRegistry(tomlFilePath, tomlchainListPath);
     }
 
     function testConstructionFailsDuplicateAddress() public {
@@ -224,6 +224,6 @@ contract MainnetAddressRegistryTest is Test {
         string memory tomlchainListPath = "test/mock/data4/taskConfig.toml";
 
         vm.expectRevert("Address already registered with this identifier and chain ID");
-        new AddressRegistry(tomlFilePath, tomlchainListPath, "task1");
+        new AddressRegistry(tomlFilePath, tomlchainListPath);
     }
 }

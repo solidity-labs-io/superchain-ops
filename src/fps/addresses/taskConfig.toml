@@ -1,3 +1,13 @@
+currentTaskIndex = 0
+
+[runFlags]
+debug = false
+doMock = true
+doBuild = true
+doSimulate = true
+doValidate = true
+doPrint = true
+
 [task]
 safeConfigChange = false
 safeOwnersChange = false
@@ -5,13 +15,13 @@ safeAddressString = "SystemConfigOwner"
 allowedStorageAccesses = ["SystemConfigProxy"]
 authorizedDelegateCalls = ["SYSTEM_CONFIG_LOGIC"]
 
-[mainnet.task1]
+[[mainnet]]
 safeNonce = 67
 
-[[mainnet.task1.l2chains]]
+[[mainnet.l2chains]]
 name = "Orderly"
 chain_id = 291
 
-[[mainnet.task1.l2chains]]
+[[mainnet.l2chains]]
 name = "Metal"
 chain_id = 1750

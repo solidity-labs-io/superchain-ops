@@ -63,7 +63,4 @@ interface IProposal {
 
     /// @notice set the Addresses contract
     function setAddresses(Addresses _addresses) external;
-
-    /// @notice set the primary fork id
-    function setPrimaryForkId(uint256 _forkId) external;
 }

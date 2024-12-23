@@ -52,7 +52,7 @@ contract AddressRegistry is IAddressRegistry, Test {
     /// @notice Initializes the contract by loading addresses from TOML files and configuring the supported L2 chains.
     /// @param addressFolderPath The path to the folder containing chain-specific TOML address files
     /// @param superchainListFilePath The path to the TOML file containing the list of supported L2 chains
-    constructor(string memory addressFolderPath, string memory superchainListFilePath, string memory taskName) {
+    constructor(string memory addressFolderPath, string memory superchainListFilePath) {
         string memory networkName;
         if (block.chainid == ETHEREUM_CHAIN_ID) {
             networkName = "mainnet";
@@ -61,9 +61,13 @@ contract AddressRegistry is IAddressRegistry, Test {
         } else {
             revert("Unsupported network");
         }
+
+        bytes memory currentTask = vm.parseToml(vm.readFile(superchainListFilePath), string.concat(".currentTaskIndex"));
+        uint256 currentTaskIndex = abi.decode(currentTask, (uint256));
+
         bytes memory superchainListContent = vm.parseToml(
             vm.readFile(superchainListFilePath),
-            string(abi.encodePacked(".", networkName, ".", taskName, ".", "l2chains"))
+            string.concat(".", networkName, "[", vm.toString(currentTaskIndex), "].l2chains")
         );
         superchains = abi.decode(superchainListContent, (Superchain[]));
 

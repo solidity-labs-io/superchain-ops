@@ -1,3 +1,13 @@
+currentTaskIndex = 0
+
+[runFlags]
+debug = false
+doMock = true
+doBuild = true
+doSimulate = true
+doValidate = true
+doPrint = true
+
 [task]
 safeConfigChange = false
 safeOwnersChange = false
@@ -5,39 +15,39 @@ safeAddressString = "SystemConfigOwner"
 allowedStorageAccesses = ["SystemConfigProxy"]
 authorizedDelegateCalls = ["SYSTEM_CONFIG_LOGIC"]
 
-[mainnet.task1]
+[[mainnet]]
 safeNonce = 67
 
-[[mainnet.task1.l2chains]]
+[[mainnet.l2chains]]
 name = "Orderly"
 chain_id = 291
 
-[[mainnet.task1.l2chains]]
+[[mainnet.l2chains]]
 name = "Metal"
 chain_id = 1750
 
-[mainnet.task2]
+[[mainnet]]
 safeNonce = 15
 
-[[mainnet.task2.l2chains]]
+[[mainnet.l2chains]]
 name = "OP Mainnet"
 chain_id = 1740
 
-[[mainnet.task2.l2chains]]
+[[mainnet.l2chains]]
 name = "Base"
 chain_id = 919
 
-[sepolia.task1]
+[[sepolia]]
 safeNonce = 10
 
-[[sepolia.task1.l2chains]]
+[[sepolia.l2chains]]
 name = "Mode Testnet"
 chain_id = 919
 
-[[sepolia.task1.l2chains]]
+[[sepolia.l2chains]]
 name = "Metal L2 Testnet"
 chain_id = 1740
 
-[[sepolia.task1.l2chains]]
+[[sepolia.l2chains]]
 name = "Zora Sepolia Testnet"
 chain_id = 999999999

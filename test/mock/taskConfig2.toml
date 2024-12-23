@@ -1,3 +1,5 @@
+currentTaskIndex = 0
+
 [task]
 safeConfigChange = false
 safeOwnersChange = false
@@ -5,13 +7,13 @@ safeAddressString = "SystemConfigOwner"
 allowedStorageAccesses = ["SystemConfigProxy"]
 authorizedDelegateCalls = ["SYSTEM_CONFIG_LOGIC"]
 
-[mainnet.task1]
-safeNonce = 67
+[[mainnet]]
+safeNonce = 66
 
-[[mainnet.task1.l2chains]]
+[[mainnet.l2chains]]
 name = "Orderly"
 chain_id = 291
 
-[[mainnet.task1.l2chains]]
+[[mainnet.l2chains]]
 name = ""
 chain_id = 1750

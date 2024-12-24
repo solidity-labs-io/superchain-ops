@@ -60,3 +60,5 @@ To run a GasConfigTemplate task, use the following command:
 ```bash
 forge script GasConfigTemplate --sig "run(string,string)" "src/fps/example/task-00/taskConfig.toml" "src/fps/example/task-00/mainnetConfig.toml" -vvvv --rpc-url mainnet
 ```
+
+When running the task on testnet, replace `mainnet` with `sepolia` or `devnet`, and the rpc-url with the appropriate testnet url.

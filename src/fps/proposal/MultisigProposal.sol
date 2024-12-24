@@ -195,8 +195,15 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         _buildStarted = false;
     }
 
-    function init(string memory taskConfigFilePath, string memory networkConfigFilePath) internal {
-        bytes memory taskConfigFileContents = vm.readFile(taskConfigFilePath);
+    function init(string memory taskConfigFilePath, string memory networkConfigFilePath, Addresses _addresses) internal {
+        setTaskConfig(taskConfigFilePath);
+        setL2NetworksConfig(networkConfigFilePath, _addresses);
+    }
+
+    function setTaskConfig(string memory taskConfigFilePath) public {
+        require(block.chainid == ETHEREUM_CHAIN_ID || block.chainid == SEPOLIA_CHAIN_ID, string.concat("Unsupported network: ", vm.toString(block.chainid)));
+        
+        string memory taskConfigFileContents = vm.readFile(taskConfigFilePath);
         DO_MOCK = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doMock"), (bool));
         DO_BUILD = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doBuild"), (bool));
         DO_SIMULATE = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doSimulate"), (bool));
@@ -211,20 +218,60 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
         name = config.name;
         description = config.description;
+    }
 
-        string memory networkName;
-        if (block.chainid == ETHEREUM_CHAIN_ID) {
-            networkName = "mainnet";
-        } else if (block.chainid == SEPOLIA_CHAIN_ID) {
-            networkName = "sepolia";
-        } else {
-            revert(string.concat("Unsupported network: ", vm.toString(block.chainid)));
-        }
-
-        bytes memory networkConfigFileContents = vm.readFile(networkConfigFilePath);
+    function setL2NetworksConfig(string memory networkConfigFilePath, Addresses _addresses) public {
+        addresses = _addresses;
+        string memory networkConfigFileContents = vm.readFile(networkConfigFilePath);
 
         nonce = abi.decode(vm.parseToml(networkConfigFileContents, ".safeNonce"), (uint256));
         isNestedSafe = abi.decode(vm.parseToml(networkConfigFileContents, ".isNestedSafe"), (bool));
+
+        /// get superchains
+        Addresses.Superchain[] memory superchains = addresses.getSuperchains();
+        require(superchains.length > 0, "MultisigProposal: no superchains found");
+
+        /// check that the safe address is the same for all superchains and then set safe in storage
+        caller = addresses.getAddress(config.safeAddressString, superchains[0].chainId);
+
+        for (uint256 i = 1; i < superchains.length; i++) {
+            require(
+                caller == addresses.getAddress(config.safeAddressString, superchains[i].chainId),
+                string.concat(
+                    "MultisigProposal: safe address mismatch. Caller: ",
+                    vm.getLabel(caller),
+                    ". Actual address: ",
+                    vm.getLabel(addresses.getAddress(config.safeAddressString, superchains[i].chainId))
+                )
+            );
+        }
+
+        /// Fetch starting owners, threshold, modules, fallback handler, and logic contract from the Gnosis Safe
+        IGnosisSafe safe = IGnosisSafe(caller);
+        startingOwners = safe.getOwners();
+        startingThreshold = safe.getThreshold();
+        (startingModules,) = safe.getModulesPaginated(address(0x1), MODULES_FETCH_AMOUNT);
+        startingFallbackHandler =
+            address(uint160(uint256(safe.getStorageAt(uint256(FALLBACK_HANDLER_STORAGE_SLOT), 1).getFirstWord())));
+        startingImplementationVersion = safe.VERSION();
+
+        for (uint256 i = 0; i < config.allowedStorageAccesses.length; i++) {
+            for (uint256 j = 0; j < superchains.length; j++) {
+                _allowedStorageAccesses.push(
+                    AllowedStorageAccesses({
+                        contractAddressIdentifier: config.allowedStorageAccesses[i],
+                        l2ChainId: superchains[j].chainId
+                    })
+                );
+            }
+        }
+
+        for (uint256 i = 0; i < config.authorizedDelegateCalls.length; i++) {
+            for (uint256 j = 0; j < superchains.length; j++) {
+                _allowedDelegateCalls[addresses.getAddress(config.authorizedDelegateCalls[i], superchains[j].chainId)] =
+                    true;
+            }
+        }
     }
 
     /// @notice function to be used by forge script.
@@ -410,60 +457,6 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// --------------------------------------------------------------------
     /// --------------------------------------------------------------------
 
-    /// @notice set the Addresses contract
-    function setAddresses(Addresses _addresses) public override {
-        require(address(addresses) == address(0), "Addresses already set");
-
-        addresses = _addresses;
-
-        /// get superchains
-        ///
-        Addresses.Superchain[] memory superchains = addresses.getSuperchains();
-        require(superchains.length > 0, "MultisigProposal: no superchains found");
-
-        /// check that the safe address is the same for all superchains and then set safe in storage
-        caller = addresses.getAddress(config.safeAddressString, superchains[0].chainId);
-
-        for (uint256 i = 1; i < superchains.length; i++) {
-            require(
-                caller == addresses.getAddress(config.safeAddressString, superchains[i].chainId),
-                string.concat(
-                    "MultisigProposal: safe address mismatch. Caller: ",
-                    vm.getLabel(caller),
-                    ". Actual address: ",
-                    vm.getLabel(addresses.getAddress(config.safeAddressString, superchains[i].chainId))
-                )
-            );
-        }
-
-        /// Fetch starting owners, threshold, modules, fallback handler, and logic contract from the Gnosis Safe
-        IGnosisSafe safe = IGnosisSafe(caller);
-        startingOwners = safe.getOwners();
-        startingThreshold = safe.getThreshold();
-        (startingModules,) = safe.getModulesPaginated(address(0x1), MODULES_FETCH_AMOUNT);
-        startingFallbackHandler =
-            address(uint160(uint256(safe.getStorageAt(uint256(FALLBACK_HANDLER_STORAGE_SLOT), 1).getFirstWord())));
-        startingImplementationVersion = safe.VERSION();
-
-        for (uint256 i = 0; i < config.allowedStorageAccesses.length; i++) {
-            for (uint256 j = 0; j < superchains.length; j++) {
-                _allowedStorageAccesses.push(
-                    AllowedStorageAccesses({
-                        contractAddressIdentifier: config.allowedStorageAccesses[i],
-                        l2ChainId: superchains[j].chainId
-                    })
-                );
-            }
-        }
-
-        for (uint256 i = 0; i < config.authorizedDelegateCalls.length; i++) {
-            for (uint256 j = 0; j < superchains.length; j++) {
-                _allowedDelegateCalls[addresses.getAddress(config.authorizedDelegateCalls[i], superchains[j].chainId)] =
-                    true;
-            }
-        }
-    }
-
     /// @notice helper function to mock on-chain data
     ///         e.g. pranking, etching, etc.
     function mock() public virtual {}
@@ -565,7 +558,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         }
     }
 
-    function printNestedDataToSign() public view override {
+    function printNestedDataToSign() public view {
         bytes memory callData = _generateApproveMulticallData();
 
         for (uint256 i; i < startingOwners.length; i++) {
@@ -575,7 +568,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         }
     }
 
-    function printNestedHashToApprove() public view override {
+    function printNestedHashToApprove() public view {
         bytes memory callData = _generateApproveMulticallData();
 
         for (uint256 i; i < startingOwners.length; i++) {

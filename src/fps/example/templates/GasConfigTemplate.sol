@@ -23,12 +23,11 @@ contract GasConfigTemplate is MultisigProposal {
 
     mapping(uint256 => SetGasConfig) public setGasConfigs;
 
-    /// TODO add support for passing the addresses object
     function run(string memory taskConfigFilePath, string memory networkConfigFilePath) public {
-        init(taskConfigFilePath, networkConfigFilePath);
 
         Addresses _addresses = new Addresses(ADDRESSES_PATH, networkConfigFilePath);
-        setAddresses(_addresses);
+        
+        init(taskConfigFilePath, networkConfigFilePath, _addresses);
 
         GasConfig[] memory gasConfig =
             abi.decode(vm.parseToml(vm.readFile(networkConfigFilePath), ".gasConfigs.gasLimits"), (GasConfig[]));
@@ -36,6 +35,14 @@ contract GasConfigTemplate is MultisigProposal {
         /// set gasLimits for each chain
         for (uint256 i = 0; i < gasConfig.length; i++) {
             gasLimits[gasConfig[i].chainId] = gasConfig[i].gasLimit;
+        }
+
+        SetGasConfig[] memory setGasConfig =
+            abi.decode(vm.parseToml(vm.readFile(networkConfigFilePath), ".gasConfigs.gasScalars"), (SetGasConfig[]));
+
+        /// set gasConfigs for each chain
+        for (uint256 i = 0; i < setGasConfig.length; i++) {
+            setGasConfigs[setGasConfig[i].l2ChainId] = setGasConfig[i];
         }
 
         run();
@@ -50,13 +57,12 @@ contract GasConfigTemplate is MultisigProposal {
             systemConfig.setGasLimit(gasLimits[chainId]);
         }
 
-        /// TODO add support for setting gas configs
-        // if (setGasConfigs[chainId].l2ChainId != 0) {
-        //     systemConfig.setGasConfig(
-        //         setGasConfigs[chainId].overhead,
-        //         setGasConfigs[chainId].scalar
-        //     );
-        // }
+        if (setGasConfigs[chainId].l2ChainId != 0) {
+            systemConfig.setGasConfig(
+                setGasConfigs[chainId].overhead,
+                setGasConfigs[chainId].scalar
+            );
+        }
     }
 
     function _validate(uint256 chainId) internal view override {

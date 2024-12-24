@@ -61,6 +61,9 @@ interface IProposal {
     /// @notice print proposal description, actions and calldata
     function print() external;
 
-    /// @notice set the Addresses contract
-    function setAddresses(Addresses _addresses) external;
+    /// @notice set the task config
+    function setTaskConfig(string memory taskConfigFilePath) external;
+
+    /// @notice set the L2 networks config
+    function setL2NetworksConfig(string memory networkConfigFilePath, Addresses _addresses) external;
 }

@@ -21,7 +21,7 @@ contract GasConfigTemplate is MultisigProposal {
         uint256 scalar;
     }
 
-    SetGasConfig[] public setGasConfigs;
+    mapping (uint256 => SetGasConfig) public setGasConfigs;
 
     /// TODO add support for passing the addresses object
     function run(string memory taskConfigFilePath, string memory networkConfigFilePath) public {
@@ -45,12 +45,30 @@ contract GasConfigTemplate is MultisigProposal {
         /// view only, filtered out by Proposal.sol
         SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", chainId));
 
-        /// mutative call, recorded by Proposal.sol for generating multisig calldata
-        systemConfig.setGasLimit(gasLimits[chainId]);
+        if (gasLimits[chainId] != 0) {
+            /// mutative call, recorded by Proposal.sol for generating multisig calldata
+            systemConfig.setGasLimit(gasLimits[chainId]);
+        }
+
+        /// TODO add support for setting gas configs
+        // if (setGasConfigs[chainId].l2ChainId != 0) {
+        //     systemConfig.setGasConfig(
+        //         setGasConfigs[chainId].overhead,
+        //         setGasConfigs[chainId].scalar
+        //     );
+        // }
     }
 
     function _validate(uint256 chainId) internal view override {
         SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", chainId));
-        assertEq(systemConfig.gasLimit(), gasLimits[chainId], "Op gas limit not set");
+
+        if (setGasConfigs[chainId].l2ChainId != 0) {
+            assertEq(systemConfig.overhead(), setGasConfigs[chainId].overhead, "overhead not set");
+            assertEq(systemConfig.scalar(), setGasConfigs[chainId].scalar, "scalar not set");
+        }
+
+        if (gasLimits[chainId] != 0) {    
+            assertEq(systemConfig.gasLimit(), gasLimits[chainId], "l2 gas limit not set");
+        }
     }
 }

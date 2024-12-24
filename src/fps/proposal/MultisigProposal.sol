@@ -196,13 +196,14 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     }
 
     function init(string memory taskConfigFilePath, string memory networkConfigFilePath) internal {
-        DO_MOCK = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doMock"), (bool));
-        DO_BUILD = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doBuild"), (bool));
-        DO_SIMULATE = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doSimulate"), (bool));
-        DO_VALIDATE = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doValidate"), (bool));
-        DO_PRINT = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doPrint"), (bool));
+        bytes memory taskConfigFileContents = vm.readFile(taskConfigFilePath);
+        DO_MOCK = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doMock"), (bool));
+        DO_BUILD = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doBuild"), (bool));
+        DO_SIMULATE = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doSimulate"), (bool));
+        DO_VALIDATE = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doValidate"), (bool));
+        DO_PRINT = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doPrint"), (bool));
 
-        bytes memory fileContents = vm.parseToml(vm.readFile(taskConfigFilePath), ".task");
+        bytes memory fileContents = vm.parseToml(taskConfigFileContents, ".task");
         config = abi.decode(fileContents, (TaskConfig));
 
         safeConfigChangeAllowed = config.safeConfigChange;
@@ -220,8 +221,10 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             revert(string.concat("Unsupported network: ", vm.toString(block.chainid)));
         }
 
-        nonce = abi.decode(vm.parseToml(vm.readFile(networkConfigFilePath), ".safeNonce"), (uint256));
-        isNestedSafe = abi.decode(vm.parseToml(vm.readFile(networkConfigFilePath), ".isNestedSafe"), (bool));
+        bytes memory networkConfigFileContents = vm.readFile(networkConfigFilePath);
+
+        nonce = abi.decode(vm.parseToml(networkConfigFileContents, ".safeNonce"), (uint256));
+        isNestedSafe = abi.decode(vm.parseToml(networkConfigFileContents, ".isNestedSafe"), (bool));
     }
 
     /// @notice function to be used by forge script.

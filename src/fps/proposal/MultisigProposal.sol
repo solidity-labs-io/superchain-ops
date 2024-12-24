@@ -32,6 +32,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// will be set to the value specified in the config file
     uint256 public nonce;
 
+    /// @notice flag to determine if the safe is nested multisig
+    bool public isNestedSafe;
+
     /// @notice owners the safe started with
     address[] public startingOwners;
 
@@ -218,6 +221,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         }
 
         nonce = abi.decode(vm.parseToml(vm.readFile(networkConfigFilePath), ".safeNonce"), (uint256));
+        isNestedSafe = abi.decode(vm.parseToml(vm.readFile(networkConfigFilePath), ".isNestedSafe"), (bool));
     }
 
     /// @notice function to be used by forge script.
@@ -545,11 +549,37 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
         _printProposalCalldata();
 
-        console.log("\n\n------------------ Data to Sign ------------------");
-        printDataToSign();
+        if (isNestedSafe) {
+            console.log("\n\n------------------ Nested Multisig EOAs Data to Sign ------------------");
+            printNestedDataToSign();
+            console.log("\n\n------------------ Nested Multisig EOAs Hash to Approve ------------------");
+            printNestedHashToApprove();
+        } else {
+            console.log("\n\n------------------ Single Multisig EOA Data to Sign ------------------");
+            printDataToSign();
+            console.log("\n\n------------------ Single Multisig EOA Hash to Approve ------------------");
+            printHashToApprove();
+        }
+    }
 
-        console.log("\n\n------------------ Hash to Approve ------------------");
-        printHashToApprove();
+    function printNestedDataToSign() public view override {
+        bytes memory callData = _generateApproveMulticallData();
+
+        for (uint256 i; i < startingOwners.length; i++) {
+            bytes memory dataToSign = _getDataToSign(startingOwners[i], callData);
+            console.log("Nested multisig: %s", vm.toString(startingOwners[i]));
+            console.logBytes(dataToSign);
+        }
+    }
+
+    function printNestedHashToApprove() public view override {
+        bytes memory callData = _generateApproveMulticallData();
+
+        for (uint256 i; i < startingOwners.length; i++) {
+            bytes32 hash = keccak256(_getDataToSign(startingOwners[i], callData));
+            console.log("Nested multisig: %s", vm.toString(startingOwners[i]));
+            console.logBytes32(hash);
+        }
     }
 
     /// --------------------------------------------------------------------
@@ -581,6 +611,26 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     function _printProposalCalldata() internal virtual {
         console.log("\n\n------------------ Proposal Calldata ------------------");
         console.logBytes(getCalldata());
+    }
+
+    function _generateApproveMulticallData() internal view returns (bytes memory) {
+        bytes32 hash = keccak256(_getDataToSign(caller, getCalldata()));
+        Call3Value memory call = Call3Value({
+            target: caller,
+            allowFailure: false,
+            value: 0,
+            callData: abi.encodeCall(IGnosisSafe(caller).approveHash, (hash))
+        });
+
+        Call3Value[] memory calls = _toArray(call);
+
+        return abi.encodeWithSignature("aggregate3Value((address,bool,uint256,bytes)[])", calls);
+    }
+
+    function _toArray(Call3Value memory call) internal pure returns (Call3Value[] memory) {
+        Call3Value[] memory calls = new Call3Value[](1);
+        calls[0] = call;
+        return calls;
     }
 
     /// --------------------------------------------------------------------

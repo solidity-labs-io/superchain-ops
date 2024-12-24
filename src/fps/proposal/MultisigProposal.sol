@@ -61,9 +61,6 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @notice configured chain id
     uint256 public configChainId;
 
-    /// @notice flag to print internal proposal logs, default is false
-    bool internal DEBUG;
-
     /// @notice flag to initiate pre-build mocking processes, default is true
     bool internal DO_MOCK;
 
@@ -143,6 +140,15 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// they all follow the same structure
     Action[] public actions;
 
+    /// @notice proposal name, e.g. "OIP15".
+    /// @dev set in the proposal config file
+    string public override name;
+
+    /// @notice proposal description.
+    /// @dev set in the proposal config file
+    string public override description;
+
+    /// @notice Multicall3 call data struct
     struct Call3Value {
         address target;
         bool allowFailure;
@@ -151,10 +157,11 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     }
 
     /// Task TOML config file values
-
     struct TaskConfig {
         string[] allowedStorageAccesses;
         string[] authorizedDelegateCalls;
+        string description;
+        string name;
         string safeAddressString;
         bool safeConfigChange;
         bool safeOwnersChange;
@@ -163,6 +170,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// configuration set at construction
     TaskConfig public config;
 
+    /// @notice flag to determine if the proposal is being simulated
     bool private _buildStarted;
 
     /// @notice buildModifier to be used by the build function to populate the
@@ -184,19 +192,21 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         _buildStarted = false;
     }
 
-    constructor(string memory path) {
-        DEBUG = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.debug"), (bool));
-        DO_MOCK = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doMock"), (bool));
-        DO_BUILD = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doBuild"), (bool));
-        DO_SIMULATE = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doSimulate"), (bool));
-        DO_VALIDATE = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doValidate"), (bool));
-        DO_PRINT = abi.decode(vm.parseToml(vm.readFile(path), ".runFlags.doPrint"), (bool));
+    function init(string memory taskConfigFilePath, string memory networkConfigFilePath) internal {
+        DO_MOCK = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doMock"), (bool));
+        DO_BUILD = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doBuild"), (bool));
+        DO_SIMULATE = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doSimulate"), (bool));
+        DO_VALIDATE = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doValidate"), (bool));
+        DO_PRINT = abi.decode(vm.parseToml(vm.readFile(taskConfigFilePath), ".runFlags.doPrint"), (bool));
 
-        bytes memory fileContents = vm.parseToml(vm.readFile(path), ".task");
+        bytes memory fileContents = vm.parseToml(vm.readFile(taskConfigFilePath), ".task");
         config = abi.decode(fileContents, (TaskConfig));
 
         safeConfigChangeAllowed = config.safeConfigChange;
         safeOwnersChangeAllowed = config.safeOwnersChange;
+
+        name = config.name;
+        description = config.description;
 
         string memory networkName;
         if (block.chainid == ETHEREUM_CHAIN_ID) {
@@ -204,18 +214,10 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         } else if (block.chainid == SEPOLIA_CHAIN_ID) {
             networkName = "sepolia";
         } else {
-            revert("Unsupported network");
+            revert(string.concat("Unsupported network: ", vm.toString(block.chainid)));
         }
 
-        uint256 currentTaskIndex =
-            abi.decode(vm.parseToml(vm.readFile(path), string.concat(".currentTaskIndex")), (uint256));
-
-        nonce = abi.decode(
-            vm.parseToml(
-                vm.readFile(path), string.concat(".", networkName, "[", vm.toString(currentTaskIndex), "].safeNonce")
-            ),
-            (uint256)
-        );
+        nonce = abi.decode(vm.parseToml(vm.readFile(networkConfigFilePath), ".safeNonce"), (uint256));
     }
 
     /// @notice function to be used by forge script.
@@ -229,7 +231,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         if (DO_PRINT) print();
     }
 
-    /// @notice return calldata, log if debug is set to true
+    /// @notice return calldata
     function getCalldata() public view override returns (bytes memory data) {
         /// get proposal actions
         (address[] memory targets, uint256[] memory values, bytes[] memory arguments) = getProposalActions();
@@ -360,10 +362,14 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             }
         }
 
-        _validate();
+        Addresses.Superchain[] memory superchains = addresses.getSuperchains();
+
+        for (uint256 i = 0; i < superchains.length; i++) {
+            _validate(superchains[i].chainId);
+        }
     }
 
-    function _validate() internal view virtual;
+    function _validate(uint256 chainId) internal view virtual;
 
     /// @notice get proposal actions
     function getProposalActions()
@@ -414,7 +420,12 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         for (uint256 i = 1; i < superchains.length; i++) {
             require(
                 caller == addresses.getAddress(config.safeAddressString, superchains[i].chainId),
-                "MultisigProposal: safe address mismatch"
+                string.concat(
+                    "MultisigProposal: safe address mismatch. Caller: ",
+                    vm.getLabel(caller),
+                    ". Actual address: ",
+                    vm.getLabel(addresses.getAddress(config.safeAddressString, superchains[i].chainId))
+                )
             );
         }
 
@@ -467,7 +478,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @notice print proposal description, actions and calldata
     function print() public virtual {
         console.log("\n---------------- Proposal Description ----------------");
-        console.log(description());
+        console.log(description);
 
         console.log("\n------------------ Proposal Actions ------------------");
         for (uint256 i; i < actions.length; i++) {
@@ -478,6 +489,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         }
 
         console.log("\n----------------- Proposal Transfers -------------------");
+        if (_proposalTransferFromAddresses.length == 0) {
+            console.log("\nNo Transfers\n");
+        }
         for (uint256 i; i < _proposalTransferFromAddresses.length; i++) {
             address account = _proposalTransferFromAddresses[i];
 
@@ -771,12 +785,4 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         // return "UNLABELED @{ADDRESS}" if address is unlabeled
         return string(abi.encodePacked("UNLABELED @", vm.toString(contractAddress)));
     }
-
-    /// @notice proposal name, e.g. "BIP15".
-    /// @dev override this to set the proposal name.
-    function name() external view virtual returns (string memory);
-
-    /// @notice proposal description.
-    /// @dev override this to set the proposal description.
-    function description() public view virtual returns (string memory);
 }

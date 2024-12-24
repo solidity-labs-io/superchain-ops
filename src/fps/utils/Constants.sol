@@ -28,6 +28,8 @@ uint256 constant BINARY_SEPOLIA_CHAIN_ID = 625;
 
 uint256 constant LOCAL_CHAIN_ID = 31337;
 
+string constant ADDRESSES_PATH = "src/fps/addresses";
+
 string constant SUPERCHAIN_REGISTRY_PATH = "lib/superchain-registry/superchain/extra/addresses/addresses.json";
 
 address constant MULTICALL3_ADDRESS = 0xcA11bde05977b3631167028862bE2a173976CA11;

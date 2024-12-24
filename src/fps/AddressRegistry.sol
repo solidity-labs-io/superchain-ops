@@ -49,26 +49,14 @@ contract AddressRegistry is IAddressRegistry, Test {
     /// @notice Array of supported superchains and their configurations
     Superchain[] public superchains;
 
-    /// @notice Initializes the contract by loading addresses from TOML files and configuring the supported L2 chains.
+    /// @notice Initializes the contract by loading addresses from TOML files
+    /// and configuring the supported L2 chains.
     /// @param addressFolderPath The path to the folder containing chain-specific TOML address files
-    /// @param superchainListFilePath The path to the TOML file containing the list of supported L2 chains
-    constructor(string memory addressFolderPath, string memory superchainListFilePath) {
-        string memory networkName;
-        if (block.chainid == ETHEREUM_CHAIN_ID) {
-            networkName = "mainnet";
-        } else if (block.chainid == SEPOLIA_CHAIN_ID) {
-            networkName = "sepolia";
-        } else {
-            revert("Unsupported network");
-        }
+    /// @param networkConfigFilePath the path to the TOML file containing the network configuration(s)
+    constructor(string memory addressFolderPath, string memory networkConfigFilePath) {
+        require(block.chainid == ETHEREUM_CHAIN_ID || block.chainid == SEPOLIA_CHAIN_ID, "Unsupported network");
 
-        bytes memory currentTask = vm.parseToml(vm.readFile(superchainListFilePath), string.concat(".currentTaskIndex"));
-        uint256 currentTaskIndex = abi.decode(currentTask, (uint256));
-
-        bytes memory superchainListContent = vm.parseToml(
-            vm.readFile(superchainListFilePath),
-            string.concat(".", networkName, "[", vm.toString(currentTaskIndex), "].l2chains")
-        );
+        bytes memory superchainListContent = vm.parseToml(vm.readFile(networkConfigFilePath), ".l2chains");
         superchains = abi.decode(superchainListContent, (Superchain[]));
 
         string memory superchainAddressesContent = vm.readFile(SUPERCHAIN_REGISTRY_PATH);

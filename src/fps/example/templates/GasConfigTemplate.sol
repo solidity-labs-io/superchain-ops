@@ -24,9 +24,8 @@ contract GasConfigTemplate is MultisigProposal {
     mapping(uint256 => SetGasConfig) public setGasConfigs;
 
     function run(string memory taskConfigFilePath, string memory networkConfigFilePath) public {
-
         Addresses _addresses = new Addresses(ADDRESSES_PATH, networkConfigFilePath);
-        
+
         init(taskConfigFilePath, networkConfigFilePath, _addresses);
 
         GasConfig[] memory gasConfig =
@@ -58,10 +57,7 @@ contract GasConfigTemplate is MultisigProposal {
         }
 
         if (setGasConfigs[chainId].l2ChainId != 0) {
-            systemConfig.setGasConfig(
-                setGasConfigs[chainId].overhead,
-                setGasConfigs[chainId].scalar
-            );
+            systemConfig.setGasConfig(setGasConfigs[chainId].overhead, setGasConfigs[chainId].scalar);
         }
     }
 

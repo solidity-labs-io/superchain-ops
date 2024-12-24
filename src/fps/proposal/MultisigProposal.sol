@@ -195,14 +195,19 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         _buildStarted = false;
     }
 
-    function init(string memory taskConfigFilePath, string memory networkConfigFilePath, Addresses _addresses) internal {
+    function init(string memory taskConfigFilePath, string memory networkConfigFilePath, Addresses _addresses)
+        internal
+    {
         setTaskConfig(taskConfigFilePath);
         setL2NetworksConfig(networkConfigFilePath, _addresses);
     }
 
     function setTaskConfig(string memory taskConfigFilePath) public {
-        require(block.chainid == ETHEREUM_CHAIN_ID || block.chainid == SEPOLIA_CHAIN_ID, string.concat("Unsupported network: ", vm.toString(block.chainid)));
-        
+        require(
+            block.chainid == ETHEREUM_CHAIN_ID || block.chainid == SEPOLIA_CHAIN_ID,
+            string.concat("Unsupported network: ", vm.toString(block.chainid))
+        );
+
         string memory taskConfigFileContents = vm.readFile(taskConfigFilePath);
         DO_MOCK = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doMock"), (bool));
         DO_BUILD = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doBuild"), (bool));

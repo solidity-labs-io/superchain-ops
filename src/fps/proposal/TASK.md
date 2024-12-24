@@ -43,6 +43,8 @@ l2chains = [{"name": "Orderly", "chainId": 291}, {"name": "Metal", "chainId": 17
 # Nonce for the gnosis safe that will be used for the task
 safeNonce = 67
 
+# Whether the safe is nested
+isNestedSafe = false
 ```
 
 ### Gas Configuration

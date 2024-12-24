@@ -21,7 +21,7 @@ contract GasConfigTemplate is MultisigProposal {
         uint256 scalar;
     }
 
-    mapping (uint256 => SetGasConfig) public setGasConfigs;
+    mapping(uint256 => SetGasConfig) public setGasConfigs;
 
     /// TODO add support for passing the addresses object
     function run(string memory taskConfigFilePath, string memory networkConfigFilePath) public {
@@ -67,7 +67,7 @@ contract GasConfigTemplate is MultisigProposal {
             assertEq(systemConfig.scalar(), setGasConfigs[chainId].scalar, "scalar not set");
         }
 
-        if (gasLimits[chainId] != 0) {    
+        if (gasLimits[chainId] != 0) {
             assertEq(systemConfig.gasLimit(), gasLimits[chainId], "l2 gas limit not set");
         }
     }

@@ -4,6 +4,7 @@ import {console} from "forge-std/console.sol";
 import {Script} from "forge-std/Script.sol";
 import {VmSafe} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
+import {LibSort} from "@solady/utils/LibSort.sol";
 
 import {IProposal} from "src/fps/proposal/IProposal.sol";
 import {BytesHelper} from "src/fps/utils/BytesHelper.sol";
@@ -19,6 +20,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
     /// @notice offset for the nonce variable in Gnosis Safe
     bytes32 public constant NONCE_OFFSET = 0x0000000000000000000000000000000000000000000000000000000000000005;
+
+    bytes32 internal constant SAFE_NONCE_SLOT = bytes32(uint256(5));
 
     /// @notice the amount of modules to fetch from the Gnosis Safe
     uint256 public constant MODULES_FETCH_AMOUNT = 1_000;
@@ -336,22 +339,42 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     ///         proposes, votes and execute on Governor Bravo, etc.
     function simulate() public {
         address multisig = caller;
-        vm.startPrank(multisig);
-
-        /// this is a hack because multisig execTransaction requires owners signatures
-        /// so we cannot simulate it exactly as it will be executed on mainnet
-        vm.etch(multisig, MULTICALL_BYTECODE);
 
         bytes memory data = getCalldata();
+        bytes32 hash = keccak256(_getDataToSign(multisig, data));
 
-        (bool success,) = multisig.call{value: 0}(data);
+        // Approve the hash from each owner
+        address[] memory owners = IGnosisSafe(multisig).getOwners();
+        for (uint256 i = 0; i < owners.length; i++) {
+            console.log("Approving hash from owner:", owners[i]);
+            vm.startPrank(owners[i]);
+            IGnosisSafe(multisig).approveHash(hash);
+            vm.stopPrank();
+        }
+
+        bytes memory signatures = prepareSignatures(multisig, hash);
+
+        bytes32 txHash = IGnosisSafe(multisig).getTransactionHash(
+            MULTICALL3_ADDRESS, 0, data, Enum.Operation.DelegateCall, 0, 0, 0, address(0), payable(address(0)), nonce
+        );
+
+        require(hash == txHash, "MultisigProposal: hash mismatch");
+
+        // Execute the transaction
+        (bool success) = IGnosisSafe(multisig).execTransaction(
+            MULTICALL3_ADDRESS,
+            0,
+            data,
+            Enum.Operation.DelegateCall,
+            0,
+            0,
+            0,
+            address(0),
+            payable(address(0)),
+            signatures
+        );
 
         require(success, "MultisigProposal: simulateActions failed");
-
-        /// revert contract code to original safe bytecode
-        vm.etch(multisig, SAFE_BYTECODE);
-
-        vm.stopPrank();
     }
 
     /// @notice returns the allowed storage accesses for the current chain id
@@ -421,6 +444,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             }
         }
 
+        require(IGnosisSafe(caller).nonce() == nonce + 1, "MultisigProposal: nonce not incremented");
+
         Addresses.Superchain[] memory superchains = addresses.getSuperchains();
 
         for (uint256 i = 0; i < superchains.length; i++) {
@@ -464,7 +489,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
     /// @notice helper function to mock on-chain data
     ///         e.g. pranking, etching, etc.
-    function mock() public virtual {}
+    function mock() public virtual {
+        vm.store(caller, SAFE_NONCE_SLOT, bytes32(nonce));
+    }
 
     /// @notice build the proposal actions
     /// @dev contract calls must be perfomed in plain solidity.
@@ -634,6 +661,59 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         Call3Value[] memory calls = new Call3Value[](1);
         calls[0] = call;
         return calls;
+    }
+
+    function prepareSignatures(address _safe, bytes32 hash) internal view returns (bytes memory) {
+        // prepend the prevalidated signatures to the signatures
+        address[] memory approvers = getApprovers(_safe, hash);
+        for (uint256 i = 0; i < approvers.length; i++) {
+            console.log("Approver:", approvers[i]);
+        }
+        return genPrevalidatedSignatures(approvers);
+    }
+
+    function genPrevalidatedSignatures(address[] memory _addresses) internal view returns (bytes memory) {
+        LibSort.sort(_addresses);
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            console.log("Address:", _addresses[i]);
+        }
+        bytes memory signatures;
+        for (uint256 i; i < _addresses.length; i++) {
+            signatures = bytes.concat(signatures, genPrevalidatedSignature(_addresses[i]));
+        }
+        return signatures;
+    }
+
+    function genPrevalidatedSignature(address _address) internal pure returns (bytes memory) {
+        uint8 v = 1;
+        bytes32 s = bytes32(0);
+        bytes32 r = bytes32(uint256(uint160(_address)));
+        return abi.encodePacked(r, s, v);
+    }
+
+    function getApprovers(address _safe, bytes32 hash) internal view returns (address[] memory) {
+        // get a list of owners that have approved this transaction
+        IGnosisSafe safe = IGnosisSafe(_safe);
+        uint256 threshold = safe.getThreshold();
+        address[] memory owners = safe.getOwners();
+        address[] memory approvers = new address[](threshold);
+        uint256 approverIndex;
+        for (uint256 i; i < owners.length; i++) {
+            address owner = owners[i];
+            uint256 approved = safe.approvedHashes(owner, hash);
+            if (approved == 1) {
+                approvers[approverIndex] = owner;
+                approverIndex++;
+                if (approverIndex == threshold) {
+                    return approvers;
+                }
+            }
+        }
+        address[] memory subset = new address[](approverIndex);
+        for (uint256 i; i < approverIndex; i++) {
+            subset[i] = approvers[i];
+        }
+        return subset;
     }
 
     /// --------------------------------------------------------------------

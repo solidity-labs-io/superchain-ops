@@ -35,18 +35,26 @@ contract DisputeGameUpgradeTemplate is MultisigProposal {
 
     function _build(uint256 chainId) internal override {
         /// view only, filtered out by Proposal.sol
-        IDisputeGameFactory disputeGameFactory = IDisputeGameFactory(addresses.getAddress("DisputeGameFactoryProxy", chainId));
+        IDisputeGameFactory disputeGameFactory =
+            IDisputeGameFactory(addresses.getAddress("DisputeGameFactoryProxy", chainId));
 
         if (setImplementations[chainId].l2ChainId != 0) {
-            disputeGameFactory.setImplementation(setImplementations[chainId].gameType, setImplementations[chainId].implementation);
+            disputeGameFactory.setImplementation(
+                setImplementations[chainId].gameType, setImplementations[chainId].implementation
+            );
         }
     }
 
     function _validate(uint256 chainId) internal view override {
-        IDisputeGameFactory disputeGameFactory = IDisputeGameFactory(addresses.getAddress("DisputeGameFactoryProxy", chainId));
+        IDisputeGameFactory disputeGameFactory =
+            IDisputeGameFactory(addresses.getAddress("DisputeGameFactoryProxy", chainId));
 
         if (setImplementations[chainId].l2ChainId != 0) {
-            assertEq(disputeGameFactory.gameImpls(setImplementations[chainId].gameType), setImplementations[chainId].implementation, "implementation not set");
+            assertEq(
+                disputeGameFactory.gameImpls(setImplementations[chainId].gameType),
+                setImplementations[chainId].implementation,
+                "implementation not set"
+            );
         }
     }
 }

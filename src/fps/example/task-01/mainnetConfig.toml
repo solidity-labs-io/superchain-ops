@@ -1,0 +1,7 @@
+# this is the file used to determine the network configuration
+
+safeNonce = 67
+isNestedSafe = true
+l2chains = [{name = "OP Mainnet", chainId = 10}]
+
+implementations = [{gameType = 0, implementation = "0xf691F8A6d908B58C534B624cF16495b491E633BA", l2ChainId = 10}, {gameType = 1, implementation = "0xc307e93a7C530a184c98EaDe4545a412b857b62f", l2ChainId = 10}]

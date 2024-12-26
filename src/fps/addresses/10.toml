@@ -12,3 +12,18 @@ isContract = true
 addr = "0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3"
 identifier = "COMPOUND_CONFIGURATOR"
 isContract = true
+
+[[addresses]]
+addr = "0xc2819DC788505Aac350142A7A707BF9D03E3Bd03"
+identifier = "COUNCIL_SAFE"
+isContract = true
+
+[[addresses]]
+addr = "0x847B5c174615B1B7fDF770882256e2D3E95b9D92"
+identifier = "FOUNDATION_SAFE"
+isContract = true
+
+[[addresses]]
+addr = "0xc641A33cab81C559F2bd4b21EA34C290E2440C2B"
+identifier = "DISPUTE_GAME_FACTORY_LOGIC"
+isContract = true

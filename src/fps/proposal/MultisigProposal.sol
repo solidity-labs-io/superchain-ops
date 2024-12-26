@@ -553,13 +553,15 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         if (isNestedSafe) {
             console.log("\n\n------------------ Nested Multisig EOAs Data to Sign ------------------");
             printNestedDataToSign();
-            console.log("\n\n------------------ Nested Multisig EOAs Hash to Approve ------------------");
-            printNestedHashToApprove();
+            // todo: check with op team if this is required
+            // console.log("\n\n------------------ Nested Multisig EOAs Hash to Approve ------------------");
+            // printNestedHashToApprove();
         } else {
             console.log("\n\n------------------ Single Multisig EOA Data to Sign ------------------");
             printDataToSign();
-            console.log("\n\n------------------ Single Multisig EOA Hash to Approve ------------------");
-            printHashToApprove();
+            // todo: check with op team if this is required
+            // console.log("\n\n------------------ Single Multisig EOA Hash to Approve ------------------");
+            // printHashToApprove();
         }
     }
 

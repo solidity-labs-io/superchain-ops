@@ -30,7 +30,7 @@ contract DisputeGameUpgradeTemplate is MultisigProposal {
             setImplementations[setImplementation[i].l2ChainId] = setImplementation[i];
         }
 
-        run();
+        processProposal();
     }
 
     function _build(uint256 chainId) internal override {

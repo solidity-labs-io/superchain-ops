@@ -38,6 +38,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @notice flag to determine if the safe is nested multisig
     bool public isNestedSafe;
 
+    /// @notice flag to determine if the proposal has been initialized
+    bool public initialized;
+
     /// @notice owners the safe started with
     address[] public startingOwners;
 
@@ -117,6 +120,14 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         bytes32 slot;
         bytes32 oldValue;
         bytes32 newValue;
+    }
+
+    struct RunFlags {
+        bool doMock;
+        bool doBuild;
+        bool doSimulate;
+        bool doValidate;
+        bool doPrint;
     }
 
     /// @notice transfers during proposal execution
@@ -201,8 +212,13 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     function init(string memory taskConfigFilePath, string memory networkConfigFilePath, Addresses _addresses)
         internal
     {
+        require(
+            !initialized && bytes(config.safeAddressString).length == 0 && address(addresses) == address(0x0),
+            "MultisigProposal: already initialized"
+        );
         setTaskConfig(taskConfigFilePath);
         setL2NetworksConfig(networkConfigFilePath, _addresses);
+        initialized = true;
     }
 
     function setTaskConfig(string memory taskConfigFilePath) public {
@@ -212,11 +228,12 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         );
 
         string memory taskConfigFileContents = vm.readFile(taskConfigFilePath);
-        DO_MOCK = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doMock"), (bool));
-        DO_BUILD = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doBuild"), (bool));
-        DO_SIMULATE = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doSimulate"), (bool));
-        DO_VALIDATE = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doValidate"), (bool));
-        DO_PRINT = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags.doPrint"), (bool));
+        RunFlags memory runFlags = abi.decode(vm.parseToml(taskConfigFileContents, ".runFlags"), (RunFlags));
+        DO_MOCK = runFlags.doMock;
+        DO_BUILD = runFlags.doBuild;
+        DO_SIMULATE = runFlags.doSimulate;
+        DO_VALIDATE = runFlags.doValidate;
+        DO_PRINT = runFlags.doPrint;
 
         bytes memory fileContents = vm.parseToml(taskConfigFileContents, ".task");
         config = abi.decode(fileContents, (TaskConfig));
@@ -285,7 +302,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @notice function to be used by forge script.
     /// @dev use flags to determine which actions to take
     ///      this function shoudn't be overriden.
-    function run() public {
+    function processProposal() public {
         if (DO_MOCK) mock();
         if (DO_BUILD) build();
         if (DO_SIMULATE) simulate();
@@ -652,15 +669,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             callData: abi.encodeCall(IGnosisSafe(caller).approveHash, (hash))
         });
 
-        Call3Value[] memory calls = _toArray(call);
-
-        return abi.encodeWithSignature("aggregate3Value((address,bool,uint256,bytes)[])", calls);
-    }
-
-    function _toArray(Call3Value memory call) internal pure returns (Call3Value[] memory) {
         Call3Value[] memory calls = new Call3Value[](1);
         calls[0] = call;
-        return calls;
+        return abi.encodeWithSignature("aggregate3Value((address,bool,uint256,bytes)[])", calls);
     }
 
     function prepareSignatures(address _safe, bytes32 hash) internal view returns (bytes memory) {

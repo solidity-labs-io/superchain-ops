@@ -44,7 +44,7 @@ contract GasConfigTemplate is MultisigProposal {
             setGasConfigs[setGasConfig[i].l2ChainId] = setGasConfig[i];
         }
 
-        run();
+        processProposal();
     }
 
     function _build(uint256 chainId) internal override {

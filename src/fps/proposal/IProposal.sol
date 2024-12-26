@@ -17,10 +17,10 @@ interface IProposal {
     /// @dev override this to set the proposal description.
     function description() external view returns (string memory);
 
-    /// @notice function to be used by forge script.
+    /// @notice function to process the proposal to be called from templates.
     /// @dev use flags to determine which actions to take
     ///      this function shoudn't be overriden.
-    function run() external;
+    function processProposal() external;
 
     /// @notice return proposal actions.
     /// @dev this function shoudn't be overriden.

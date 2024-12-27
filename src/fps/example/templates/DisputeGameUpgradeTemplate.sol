@@ -12,7 +12,7 @@ import "forge-std/console.sol";
 contract DisputeGameUpgradeTemplate is MultisigProposal {
     struct SetImplementation {
         uint32 gameType;
-        address implementation;
+        string implementation;
         uint256 l2ChainId;
     }
 
@@ -40,7 +40,8 @@ contract DisputeGameUpgradeTemplate is MultisigProposal {
 
         if (setImplementations[chainId].l2ChainId != 0) {
             disputeGameFactory.setImplementation(
-                setImplementations[chainId].gameType, setImplementations[chainId].implementation
+                setImplementations[chainId].gameType,
+                addresses.getAddress(setImplementations[chainId].implementation, chainId)
             );
         }
     }
@@ -52,7 +53,7 @@ contract DisputeGameUpgradeTemplate is MultisigProposal {
         if (setImplementations[chainId].l2ChainId != 0) {
             assertEq(
                 disputeGameFactory.gameImpls(setImplementations[chainId].gameType),
-                setImplementations[chainId].implementation,
+                addresses.getAddress(setImplementations[chainId].implementation, chainId),
                 "implementation not set"
             );
         }

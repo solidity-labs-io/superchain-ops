@@ -27,3 +27,8 @@ isContract = true
 addr = "0xc641A33cab81C559F2bd4b21EA34C290E2440C2B"
 identifier = "DISPUTE_GAME_FACTORY_LOGIC"
 isContract = true
+
+[[addresses]]
+addr = "0xf691F8A6d908B58C534B624cF16495b491E633BA"
+identifier = "FAULT_DISPUTE_GAME_IMPLEMENTATION"
+isContract = true

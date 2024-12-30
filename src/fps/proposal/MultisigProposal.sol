@@ -251,7 +251,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
     /// @notice Set the task configuration
     /// @param taskConfigFilePath Path to the task configuration file
-    function setTaskConfig(string memory taskConfigFilePath) public {
+    function setTaskConfig(string memory taskConfigFilePath) public override {
         require(
             block.chainid == ETHEREUM_CHAIN_ID || block.chainid == SEPOLIA_CHAIN_ID,
             string.concat("Unsupported network: ", vm.toString(block.chainid))
@@ -275,7 +275,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         description = config.description;
     }
 
-    function setL2NetworksConfig(string memory networkConfigFilePath, Addresses _addresses) public {
+    function setL2NetworksConfig(string memory networkConfigFilePath, Addresses _addresses) public override {
         addresses = _addresses;
         string memory networkConfigFileContents = vm.readFile(networkConfigFilePath);
 
@@ -306,8 +306,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         startingOwners = safe.getOwners();
         startingThreshold = safe.getThreshold();
         (startingModules,) = safe.getModulesPaginated(address(0x1), MODULES_FETCH_AMOUNT);
-        startingFallbackHandler =
-            address(uint160(uint256(safe.getStorageAt(uint256(FALLBACK_HANDLER_STORAGE_SLOT), 1).getFirstWord())));
+        startingFallbackHandler = address(uint160(uint256(vm.load(caller, FALLBACK_HANDLER_STORAGE_SLOT))));
         startingImplementationVersion = safe.VERSION();
 
         for (uint256 i = 0; i < config.allowedStorageWriteAccesses.length; i++) {
@@ -332,7 +331,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @notice function to be used by forge script.
     /// @dev use flags to determine which actions to take
     ///      this function shoudn't be overriden.
-    function processProposal() public {
+    function processProposal() internal override {
         if (DO_MOCK) mock();
         if (DO_BUILD) build();
         if (DO_SIMULATE) simulate();
@@ -359,12 +358,12 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     }
 
     /// @notice print the data to sig by EOA for single multisig
-    function printDataToSign() public view virtual {
+    function printDataToSign() public view {
         console.logBytes(_getDataToSign(caller, getCalldata()));
     }
 
     /// @notice print the hash to approve by EOA for single multisig
-    function printHashToApprove() public view virtual {
+    function printHashToApprove() public view {
         bytes32 hash = keccak256(_getDataToSign(caller, getCalldata()));
         console.logBytes32(hash);
     }
@@ -389,7 +388,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     }
 
     /// @notice simulate the proposal by approving from owners and then executing
-    function simulate() public {
+    function simulate() public override {
         address multisig = caller;
 
         bytes memory data = getCalldata();
@@ -398,10 +397,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         // Approve the hash from each owner
         address[] memory owners = IGnosisSafe(multisig).getOwners();
         for (uint256 i = 0; i < owners.length; i++) {
-            console.log("Approving hash from owner:", owners[i]);
-            vm.startPrank(owners[i]);
+            vm.prank(owners[i]);
             IGnosisSafe(multisig).approveHash(hash);
-            vm.stopPrank();
         }
 
         bytes memory signatures = prepareSignatures(multisig, hash);
@@ -431,7 +428,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
     /// @notice returns the allowed storage accesses
     /// @return _allowedStorageAccesses The allowed storage accesses
-    function getAllowedStorageAccess() public view returns (AllowedStorageAccesses[] memory) {
+    function getAllowedStorageAccess() public view override returns (AllowedStorageAccesses[] memory) {
         return _allowedStorageAccesses;
     }
 
@@ -478,11 +475,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         if (!safeConfigChangeAllowed) {
             uint256 threshold = IGnosisSafe(caller).getThreshold();
             (address[] memory modules,) = IGnosisSafe(caller).getModulesPaginated(address(0x1), MODULES_FETCH_AMOUNT);
-            address fallbackHandler = address(
-                uint160(
-                    uint256(IGnosisSafe(caller).getStorageAt(uint256(FALLBACK_HANDLER_STORAGE_SLOT), 1).getFirstWord())
-                )
-            );
+            address fallbackHandler = address(uint160(uint256(vm.load(caller, FALLBACK_HANDLER_STORAGE_SLOT))));
             string memory version = IGnosisSafe(caller).VERSION();
 
             require(
@@ -518,6 +511,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     function getProposalActions()
         public
         view
+        override
         returns (address[] memory targets, uint256[] memory values, bytes[] memory arguments)
     {
         uint256 actionsLength = actions.length;
@@ -549,7 +543,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @notice helper function to mock on-chain data
     ///         e.g. pranking, etching, etc. Sets nonce to the task nonce by default
     /// @dev override to add additional mock logic
-    function mock() public virtual {
+    function mock() public virtual override {
         vm.store(caller, SAFE_NONCE_SLOT, bytes32(nonce));
     }
 
@@ -557,7 +551,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @dev contract calls must be perfomed in plain solidity.
     ///      overriden requires using buildModifier modifier to leverage
     ///      foundry snapshot and state diff recording to populate the actions array.
-    function build() public buildModifier {
+    function build() public override buildModifier {
         Addresses.Superchain[] memory superchains = addresses.getSuperchains();
 
         for (uint256 i = 0; i < superchains.length; i++) {
@@ -570,7 +564,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     function _build(uint256 chainId) internal virtual;
 
     /// @notice print proposal description, actions, transfers, state changes and EOAs datas to sign
-    function print() public virtual {
+    function print() public virtual override {
         console.log("\n---------------- Proposal Description ----------------");
         console.log(description);
 
@@ -643,14 +637,14 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             console.log("\n\n------------------ Nested Multisig EOAs Data to Sign ------------------");
             printNestedDataToSign();
             // todo: check with op team if this is required
-            // console.log("\n\n------------------ Nested Multisig EOAs Hash to Approve ------------------");
-            // printNestedHashToApprove();
+            console.log("\n\n------------------ Nested Multisig EOAs Hash to Approve ------------------");
+            printNestedHashToApprove();
         } else {
             console.log("\n\n------------------ Single Multisig EOA Data to Sign ------------------");
             printDataToSign();
             // todo: check with op team if this is required
-            // console.log("\n\n------------------ Single Multisig EOA Hash to Approve ------------------");
-            // printHashToApprove();
+            console.log("\n\n------------------ Single Multisig EOA Hash to Approve ------------------");
+            printHashToApprove();
         }
     }
 
@@ -729,18 +723,12 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     function prepareSignatures(address _safe, bytes32 hash) internal view returns (bytes memory) {
         // prepend the prevalidated signatures to the signatures
         address[] memory approvers = getApprovers(_safe, hash);
-        for (uint256 i = 0; i < approvers.length; i++) {
-            console.log("Approver:", approvers[i]);
-        }
         return genPrevalidatedSignatures(approvers);
     }
 
     /// @notice helper function to generate the prevalidated signatures for a given list of addresses
-    function genPrevalidatedSignatures(address[] memory _addresses) internal view returns (bytes memory) {
+    function genPrevalidatedSignatures(address[] memory _addresses) internal pure returns (bytes memory) {
         LibSort.sort(_addresses);
-        for (uint256 i = 0; i < _addresses.length; i++) {
-            console.log("Address:", _addresses[i]);
-        }
         bytes memory signatures;
         for (uint256 i; i < _addresses.length; i++) {
             signatures = bytes.concat(signatures, genPrevalidatedSignature(_addresses[i]));

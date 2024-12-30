@@ -545,7 +545,17 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @dev override to add additional mock logic
     function mock() public virtual override {
         vm.store(caller, SAFE_NONCE_SLOT, bytes32(nonce));
+
+        Addresses.Superchain[] memory superchains = addresses.getSuperchains();
+
+        for (uint256 i = 0; i < superchains.length; i++) {
+            _mock(superchains[i].chainId);
+        }
     }
+
+    /// @notice mock state to help build the proposal actions for a given l2chain
+    /// @dev override to add additional proposal specific mocks
+    function _mock(uint256 chainId) internal virtual {}
 
     /// @notice build the proposal actions for all l2chains in the task
     /// @dev contract calls must be perfomed in plain solidity.

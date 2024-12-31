@@ -20,11 +20,9 @@ contract DisputeGameUpgradeTemplate is MultisigProposal {
     /// @notice maps a l2 chain id to a SetImplementation struct
     mapping(uint256 => SetImplementation) public setImplementations;
 
-    /**
-     * @notice Runs the proposal with the given task and network configuration file paths. Sets the address registry, initializes the proposal and processes the proposal.
-     * @param taskConfigFilePath The path to the task configuration file.
-     * @param networkConfigFilePath The path to the network configuration file.
-     */
+    /// @notice Runs the proposal with the given task and network configuration file paths. Sets the address registry, initializes the proposal and processes the proposal.
+    /// @param taskConfigFilePath The path to the task configuration file.
+    /// @param networkConfigFilePath The path to the network configuration file.
     function run(string memory taskConfigFilePath, string memory networkConfigFilePath) public {
         Addresses _addresses = new Addresses(ADDRESSES_PATH, networkConfigFilePath);
 
@@ -40,9 +38,7 @@ contract DisputeGameUpgradeTemplate is MultisigProposal {
         processProposal();
     }
 
-    /**
-     * @notice builds setImplementation action for the given chainId. Overrrides MultisigProposal._build
-     */
+    /// @notice builds setImplementation action for the given chainId. Overrrides MultisigProposal._build
     function _build(uint256 chainId) internal override {
         /// view only, filtered out by Proposal.sol
         IDisputeGameFactory disputeGameFactory =
@@ -56,9 +52,7 @@ contract DisputeGameUpgradeTemplate is MultisigProposal {
         }
     }
 
-    /**
-     * @notice validates if the implementation is set correctly. Overrrides MultisigProposal._validate
-     */
+    /// @notice validates if the implementation is set correctly. Overrrides MultisigProposal._validate
     function _validate(uint256 chainId) internal view override {
         IDisputeGameFactory disputeGameFactory =
             IDisputeGameFactory(addresses.getAddress("DisputeGameFactoryProxy", chainId));

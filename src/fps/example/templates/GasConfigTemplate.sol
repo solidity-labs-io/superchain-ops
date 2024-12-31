@@ -26,11 +26,9 @@ contract GasConfigTemplate is MultisigProposal {
     /// @notice Mapping of L2 chain IDs to their respective gas configuration settings
     mapping(uint256 => SetGasConfig) public setGasConfigs;
 
-    /**
-     * @notice Runs the proposal with the given task and network configuration file paths. Sets the address registry, initializes the proposal and processes the proposal.
-     * @param taskConfigFilePath The path to the task configuration file.
-     * @param networkConfigFilePath The path to the network configuration file.
-     */
+    /// @notice Runs the proposal with the given task and network configuration file paths. Sets the address registry, initializes the proposal and processes the proposal.
+    /// @param taskConfigFilePath The path to the task configuration file.
+    /// @param networkConfigFilePath The path to the network configuration file.
     function run(string memory taskConfigFilePath, string memory networkConfigFilePath) public {
         Addresses _addresses = new Addresses(ADDRESSES_PATH, networkConfigFilePath);
 
@@ -53,9 +51,7 @@ contract GasConfigTemplate is MultisigProposal {
         processProposal();
     }
 
-    /**
-     * @notice build the actions for setting the gas limits and gas configs for a specific l2 chain id.
-     */
+    /// @notice build the actions for setting the gas limits and gas configs for a specific l2 chain id.
     function _build(uint256 chainId) internal override {
         /// View only, filtered out by Proposal.sol
         SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", chainId));
@@ -70,9 +66,7 @@ contract GasConfigTemplate is MultisigProposal {
         }
     }
 
-    /**
-     * @notice Validates the gas limit and gas config were set correctly for the specified chain ID.
-     */
+    /// @notice Validates the gas limit and gas config were set correctly for the specified chain ID.
     function _validate(uint256 chainId) internal view override {
         SystemConfig systemConfig = SystemConfig(addresses.getAddress("SystemConfigProxy", chainId));
 

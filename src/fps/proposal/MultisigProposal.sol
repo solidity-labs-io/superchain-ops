@@ -13,8 +13,6 @@ import {IGnosisSafe, Enum} from "src/fps/proposal/IGnosisSafe.sol";
 import {NetworkTranslator} from "src/fps/utils/NetworkTranslator.sol";
 import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
 import {
-    MULTICALL_BYTECODE,
-    SAFE_BYTECODE,
     NONCE_OFFSET,
     SAFE_NONCE_SLOT,
     MODULES_FETCH_AMOUNT,
@@ -28,9 +26,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     using BytesHelper for bytes;
     using NetworkTranslator for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
+
     /// @notice nonce used for generating the safe transaction
     /// will be set to the value specified in the config file
-
     uint256 public nonce;
 
     /// @notice flag to determine if the safe is nested multisig
@@ -267,6 +265,9 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         description = config.description;
     }
 
+    /// @notice Sets the L2 networks configuration
+    /// @param networkConfigFilePath Path to the network configuration file
+    /// @param _addresses Address registry contract
     function setL2NetworksConfig(string memory networkConfigFilePath, Addresses _addresses) public override {
         addresses = _addresses;
         string memory networkConfigFileContents = vm.readFile(networkConfigFilePath);

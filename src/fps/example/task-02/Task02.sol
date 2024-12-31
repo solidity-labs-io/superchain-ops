@@ -55,6 +55,7 @@ contract Task02 is GenericTemplate {
     }
 
     function _mock(uint256 chainId) internal override {
+        /// make the DEPUTY_GUARDIAN as a module to the Guardian safe
         bytes32 deputyGuardianModuleSlot =
             keccak256(abi.encode(addresses.getAddress("DEPUTY_GUARDIAN", chainId), uint256(1)));
         vm.store(

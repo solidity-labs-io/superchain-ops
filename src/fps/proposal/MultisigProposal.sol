@@ -426,6 +426,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     ///          sure they are deployed and initialized correctly, or read
     ///          states that are expected to have changed during the simulate step.
     function validate() public view override {
+        /// check that all state change addresses are in allowed storage accesses
         for (uint256 i; i < _proposalStateChangeAddresses.length(); i++) {
             address addr = _proposalStateChangeAddresses.at(i);
             require(
@@ -438,6 +439,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             );
         }
 
+        /// check that all allowed storage accesses are in proposal state change addresses
         for (uint256 i; i < _allowedStorageAccesses.length(); i++) {
             address addr = _allowedStorageAccesses.at(i);
             require(

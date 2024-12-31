@@ -5,34 +5,32 @@ import {Script} from "forge-std/Script.sol";
 import {VmSafe} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
 import {LibSort} from "@solady/utils/LibSort.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {IProposal} from "src/fps/proposal/IProposal.sol";
 import {BytesHelper} from "src/fps/utils/BytesHelper.sol";
 import {IGnosisSafe, Enum} from "src/fps/proposal/IGnosisSafe.sol";
 import {NetworkTranslator} from "src/fps/utils/NetworkTranslator.sol";
 import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
-import {MULTICALL_BYTECODE, SAFE_BYTECODE} from "src/fps/utils/Constants.sol";
-import {MULTICALL3_ADDRESS, ETHEREUM_CHAIN_ID, SEPOLIA_CHAIN_ID} from "src/fps/utils/Constants.sol";
+import {
+    MULTICALL_BYTECODE,
+    SAFE_BYTECODE,
+    NONCE_OFFSET,
+    SAFE_NONCE_SLOT,
+    MODULES_FETCH_AMOUNT,
+    FALLBACK_HANDLER_STORAGE_SLOT,
+    MULTICALL3_ADDRESS,
+    ETHEREUM_CHAIN_ID,
+    SEPOLIA_CHAIN_ID
+} from "src/fps/utils/Constants.sol";
 
 abstract contract MultisigProposal is Test, Script, IProposal {
     using BytesHelper for bytes;
     using NetworkTranslator for uint256;
-
-    /// @notice offset for the nonce variable in Gnosis Safe
-    bytes32 public constant NONCE_OFFSET = 0x0000000000000000000000000000000000000000000000000000000000000005;
-
-    bytes32 internal constant SAFE_NONCE_SLOT = bytes32(uint256(5));
-
-    /// @notice the amount of modules to fetch from the Gnosis Safe
-    uint256 public constant MODULES_FETCH_AMOUNT = 1_000;
-
-    /// @notice storage slot for the fallback handler
-    /// keccak256("fallback_manager.handler.address")
-    bytes32 public constant FALLBACK_HANDLER_STORAGE_SLOT =
-        0x6c9a6c4a39284e37ed1cf53d337577d14212a4870fb976a4366c693b939918d5;
-
+    using EnumerableSet for EnumerableSet.AddressSet;
     /// @notice nonce used for generating the safe transaction
     /// will be set to the value specified in the config file
+
     uint256 public nonce;
 
     /// @notice flag to determine if the safe is nested multisig
@@ -97,8 +95,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     address public caller;
 
     /// @notice struct to store allowed storage accesses
-    /// maps a chainid to an array of allowed storage accesses for that chain
-    AllowedStorageAccesses[] private _allowedStorageAccesses;
+    /// uses OpenZeppelin EnumerableSet for allowed storage accesses
+    EnumerableSet.AddressSet private _allowedStorageAccesses;
 
     /// addresses that are allowed to be the receivers of delegate calls
     mapping(address => bool) private _allowedDelegateCalls;
@@ -156,19 +154,13 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     mapping(address => StateInfo[]) private _stateInfos;
 
     /// @notice addresses involved in state changes or token transfers
-    address[] private _proposalTransferFromAddresses;
-
-    /// @notice map if an address is transferred from in proposal execution
-    mapping(address => bool) private _isProposalTransferFromAddress;
+    EnumerableSet.AddressSet private _proposalTransferFromAddresses;
 
     /// @notice addresses whose state is updated in proposal execution
-    address[] internal _proposalStateChangeAddresses;
+    EnumerableSet.AddressSet internal _proposalStateChangeAddresses;
 
     /// @notice stores the gnosis safe accesses for the proposal
     VmSafe.StorageAccess[] internal _accountAccesses;
-
-    /// @notice stores the addresses touched by the proposal state writes
-    mapping(address => bool) internal _isProposalStateChangeAddress;
 
     /// @notice starting snapshot of the contract state before the calls are made
     uint256 private _startSnapshot;
@@ -237,7 +229,7 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     /// @param taskConfigFilePath Path to the task configuration file
     /// @param networkConfigFilePath Path to the network configuration file
     /// @param _addresses Address registry contract
-    function init(string memory taskConfigFilePath, string memory networkConfigFilePath, Addresses _addresses)
+    function _init(string memory taskConfigFilePath, string memory networkConfigFilePath, Addresses _addresses)
         internal
     {
         require(
@@ -311,11 +303,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
         for (uint256 i = 0; i < config.allowedStorageWriteAccesses.length; i++) {
             for (uint256 j = 0; j < superchains.length; j++) {
-                _allowedStorageAccesses.push(
-                    AllowedStorageAccesses({
-                        contractAddressIdentifier: config.allowedStorageWriteAccesses[i],
-                        l2ChainId: superchains[j].chainId
-                    })
+                _allowedStorageAccesses.add(
+                    addresses.getAddress(config.allowedStorageWriteAccesses[i], superchains[j].chainId)
                 );
             }
         }
@@ -428,8 +417,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
     /// @notice returns the allowed storage accesses
     /// @return _allowedStorageAccesses The allowed storage accesses
-    function getAllowedStorageAccess() public view override returns (AllowedStorageAccesses[] memory) {
-        return _allowedStorageAccesses;
+    function getAllowedStorageAccess() public view override returns (address[] memory) {
+        return _allowedStorageAccesses.values();
     }
 
     /// @notice execute post-proposal checks.
@@ -437,29 +426,25 @@ abstract contract MultisigProposal is Test, Script, IProposal {
     ///          sure they are deployed and initialized correctly, or read
     ///          states that are expected to have changed during the simulate step.
     function validate() public view override {
-        AllowedStorageAccesses[] memory allowedStorageAccesses = getAllowedStorageAccess();
-
-        for (uint256 i; i < _proposalStateChangeAddresses.length; i++) {
-            address addr = _proposalStateChangeAddresses[i];
-            bool isAllowed;
-            for (uint256 j; j < allowedStorageAccesses.length; j++) {
-                /// if this address was explicitly allowed in the proposal, or the caller is the multisig
-                if (
-                    addresses.getAddress(
-                        allowedStorageAccesses[j].contractAddressIdentifier, allowedStorageAccesses[j].l2ChainId
-                    ) == addr || addr == caller
-                ) {
-                    isAllowed = true;
-                    break;
-                }
-            }
-
-            /// make more verbose
+        for (uint256 i; i < _proposalStateChangeAddresses.length(); i++) {
+            address addr = _proposalStateChangeAddresses.at(i);
             require(
-                isAllowed,
+                _allowedStorageAccesses.contains(addr),
                 string(
                     abi.encodePacked(
-                        "MultisigProposal: address ", vm.toString(addr), " not in allowed storage accesses"
+                        "MultisigProposal: address ", _getAddressLabel(addr), " not in allowed storage accesses"
+                    )
+                )
+            );
+        }
+
+        for (uint256 i; i < _allowedStorageAccesses.length(); i++) {
+            address addr = _allowedStorageAccesses.at(i);
+            require(
+                _proposalStateChangeAddresses.contains(addr),
+                string(
+                    abi.encodePacked(
+                        "MultisigProposal: address ", _getAddressLabel(addr), " not in proposal state change addresses"
                     )
                 )
             );
@@ -587,11 +572,11 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         }
 
         console.log("\n----------------- Proposal Transfers -------------------");
-        if (_proposalTransferFromAddresses.length == 0) {
+        if (_proposalTransferFromAddresses.length() == 0) {
             console.log("\nNo Transfers\n");
         }
-        for (uint256 i; i < _proposalTransferFromAddresses.length; i++) {
-            address account = _proposalTransferFromAddresses[i];
+        for (uint256 i; i < _proposalTransferFromAddresses.length(); i++) {
+            address account = _proposalTransferFromAddresses.at(i);
 
             console.log("\n\n", string(abi.encodePacked(_getAddressLabel(account), ":")));
 
@@ -628,8 +613,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
 
         console.log("\n----------------- Proposal State Changes -------------------");
         // print state changes
-        for (uint256 k; k < _proposalStateChangeAddresses.length; k++) {
-            address account = _proposalStateChangeAddresses[k];
+        for (uint256 k; k < _proposalStateChangeAddresses.length(); k++) {
+            address account = _proposalStateChangeAddresses.at(k);
             StateInfo[] memory stateChanges = _stateInfos[account];
             if (stateChanges.length > 0) {
                 console.log("\n State Changes for account:", _getAddressLabel(account));
@@ -885,9 +870,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         // get eth transfers
         if (accountAccess.value != 0) {
             // add address to proposal transfer from addresses array only if not already added
-            if (!_isProposalTransferFromAddress[accountAccess.accessor]) {
-                _isProposalTransferFromAddress[accountAccess.accessor] = true;
-                _proposalTransferFromAddresses.push(accountAccess.accessor);
+            if (!_proposalTransferFromAddresses.contains(accountAccess.accessor)) {
+                _proposalTransferFromAddresses.add(accountAccess.accessor);
             }
             _proposalTransfers[accountAccess.accessor].push(
                 TransferInfo({to: account, value: accountAccess.value, tokenAddress: address(0)})
@@ -927,9 +911,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
         }
 
         // add address to proposal transfer from addresses array only if not already added
-        if (!_isProposalTransferFromAddress[from]) {
-            _isProposalTransferFromAddress[from] = true;
-            _proposalTransferFromAddresses.push(from);
+        if (!_proposalTransferFromAddresses.contains(from)) {
+            _proposalTransferFromAddresses.add(from);
         }
 
         _proposalTransfers[from].push(TransferInfo({to: to, value: value, tokenAddress: accountAccess.account}));
@@ -952,9 +935,8 @@ abstract contract MultisigProposal is Test, Script, IProposal {
             }
 
             // add address to proposal state change addresses array only if not already added
-            if (!_isProposalStateChangeAddress[account] && _stateInfos[account].length != 0) {
-                _isProposalStateChangeAddress[account] = true;
-                _proposalStateChangeAddresses.push(account);
+            if (!_proposalStateChangeAddresses.contains(account) && _stateInfos[account].length != 0) {
+                _proposalStateChangeAddresses.add(account);
             }
         }
     }

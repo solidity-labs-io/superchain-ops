@@ -13,7 +13,7 @@ abstract contract GenericTemplate is MultisigProposal {
     function run(string memory taskConfigFilePath, string memory networkConfigFilePath) public virtual {
         Addresses _addresses = new Addresses(ADDRESSES_PATH, networkConfigFilePath);
 
-        init(taskConfigFilePath, networkConfigFilePath, _addresses);
+        _init(taskConfigFilePath, networkConfigFilePath, _addresses);
 
         processProposal();
     }

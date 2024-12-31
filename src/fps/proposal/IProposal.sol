@@ -3,11 +3,6 @@ pragma solidity 0.8.15;
 import {AddressRegistry as Addresses} from "src/fps/AddressRegistry.sol";
 
 abstract contract IProposal {
-    struct AllowedStorageAccesses {
-        string contractAddressIdentifier;
-        uint256 l2ChainId;
-    }
-
     /// @notice proposal name, e.g. "BIP15".
     /// @dev override this to set the proposal name.
 
@@ -30,7 +25,7 @@ abstract contract IProposal {
         returns (address[] memory targets, uint256[] memory values, bytes[] memory arguments);
 
     /// @notice return contract identifiers whose storage is modified by the proposal
-    function getAllowedStorageAccess() external view virtual returns (AllowedStorageAccesses[] memory);
+    function getAllowedStorageAccess() external view virtual returns (address[] memory);
 
     /// @notice return proposal calldata
     function getCalldata() external virtual returns (bytes memory data);

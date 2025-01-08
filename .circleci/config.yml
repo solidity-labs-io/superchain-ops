@@ -20,6 +20,46 @@ parameters:
     type: integer
     default: 5
 
+commands:
+  simulate:
+    description: "Runs simulations of a task"
+    parameters:
+      task:
+        type: string
+    steps:
+      - checkout
+      - run:
+          name: "simulate << parameters.task >>"
+          command: |
+            just install
+            cd tasks/<< parameters.task >>
+            SIMULATE_WITHOUT_LEDGER=true just \
+              --dotenv-path $(pwd)/.env \
+              --justfile ../../../single.just \
+              simulate
+
+  simulate_nested:
+    description: "Runs simulations of a nested task"
+    parameters:
+      task:
+        type: string
+    steps:
+      - checkout
+      - run:
+          name: "simulate nested << parameters.task >>"
+          command: |
+            just install
+            cd tasks/<< parameters.task >>
+            SIMULATE_WITHOUT_LEDGER=true just \
+              --dotenv-path $(pwd)/.env \
+              --justfile ../../../nested.just \
+              simulate foundation
+            SIMULATE_WITHOUT_LEDGER=true just \
+              --dotenv-path $(pwd)/.env \
+              --justfile ../../../nested.just \
+              simulate council
+
+
 jobs:
   check_sepolia_rpc_endpoints:
     circleci_ip_ranges: true
@@ -174,6 +214,27 @@ jobs:
             just simulate-council
             just prepare-json
             just simulate-council # simulate again to make sure the json is still valid
+
+  simulate_eth_021:
+    docker:
+      - image: << pipeline.parameters.ci_builder_image >>
+    steps:
+      - simulate:
+          task: "eth/021-holocene-protocol-versions"
+
+  simulate_base_003:
+    docker:
+      - image: << pipeline.parameters.ci_builder_image >>
+    steps:
+      - simulate_nested:
+          task: "eth/base-003-holocene-fp-upgrade"
+
+  just_simulate_permissionless_fp_upgrade:
+    docker:
+      - image: << pipeline.parameters.ci_builder_image >>
+    steps:
+      - simulate_nested:
+          task: "/eth/ink-001-permissionless-proofs"
             
   forge_build:
     docker:
@@ -186,6 +247,7 @@ jobs:
             just install
             forge --version
             forge build --deny-warnings
+
   forge_fmt:
     docker:
       - image: <<pipeline.parameters.ci_builder_image>>
@@ -219,7 +281,14 @@ jobs:
             just --version
             yq --version
             forge --version
-  
+
+  simulate_eth_022:
+    docker:
+      - image: << pipeline.parameters.ci_builder_image >>
+    steps:
+      - simulate_nested:
+          task: "eth/022-holocene-fp-upgrade"
+
 workflows:
   main:
     jobs:
@@ -247,3 +316,7 @@ workflows:
       - just_simulate_sc_rehearsal_1
       - just_simulate_sc_rehearsal_2
       - just_simulate_sc_rehearsal_4
+      - simulate_eth_021
+      - simulate_eth_022
+      - simulate_base_003
+      - just_simulate_permissionless_fp_upgrade

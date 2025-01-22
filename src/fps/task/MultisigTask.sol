@@ -178,13 +178,15 @@ abstract contract MultisigTask is Test, Script, ITask {
         string memory networkConfigFileContents = vm.readFile(networkConfigFilePath);
 
         isNestedSafe = abi.decode(vm.parseToml(networkConfigFileContents, ".isNestedSafe"), (bool));
-        
+
         /// get chains
         Addresses.ChainInfo[] memory chains = addresses.getChains();
         require(chains.length > 0, "MultisigTask: no chains found");
-        
+
         /// check that the safe address is the same for all chains and then set safe in storage
         multisig = addresses.getAddress(config.safeAddressString, chains[0].chainId);
+
+        /// TODO change this once we implement task stacking
         nonce = IGnosisSafe(multisig).nonce();
 
         for (uint256 i = 1; i < chains.length; i++) {

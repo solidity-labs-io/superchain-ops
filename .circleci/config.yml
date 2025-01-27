@@ -221,6 +221,51 @@ jobs:
       - simulate:
           task: "/eth/ink-002-set-respected-game-type"
 
+  # fps example tasks simulations
+  task00_simulate:
+    docker:
+      - image: << pipeline.parameters.ci_builder_image >>
+    steps:
+      - checkout
+      - run:
+          name: simulate task00
+          command: |
+            forge --version
+            forge script src/fps/example/template/GasConfigTemplate.sol --sig "run(string)" src/fps/example/task-00/mainnetConfig.toml --rpc-url mainnet -vvv
+
+  task01_simulate:
+    docker:
+      - image: << pipeline.parameters.ci_builder_image >>
+    steps:
+      - checkout
+      - run:
+          name: simulate task01
+          command: |
+            forge --version
+            forge script src/fps/example/template/DisputeGameUpgradeTemplate.sol --sig "run(string)" src/fps/example/task-01/mainnetConfig.toml --rpc-url mainnet -vvv
+
+  task02_simulate:
+    docker:
+      - image: << pipeline.parameters.ci_builder_image >>
+    steps:
+      - checkout
+      - run:
+          name: simulate task02
+          command: |
+            forge --version
+            forge script src/fps/example/template/SetGameTypeTemplate.sol --sig "run(string)" src/fps/example/task-02/mainnetConfig.toml --rpc-url mainnet -vvv
+
+  task03_simulate:
+    docker:
+      - image: << pipeline.parameters.ci_builder_image >>
+    steps:
+      - checkout
+      - run:
+          name: simulate task03
+          command: |
+            forge --version
+            forge script src/fps/example/template/GasConfigTemplate.sol --sig "run(string)" src/fps/example/task-03/mainnetConfig.toml --rpc-url mainnet -vvv
+
   forge_build:
     docker:
       - image: <<pipeline.parameters.ci_builder_image>>
@@ -296,3 +341,8 @@ workflows:
       - just_simulate_sc_rehearsal_4
       - just_simulate_ink_respected_game_type
       # sepolia
+      # fps example tasks simulations
+      - task00_simulate
+      - task01_simulate
+      - task02_simulate
+      - task03_simulate
